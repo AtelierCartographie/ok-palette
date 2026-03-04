@@ -82,6 +82,8 @@ export interface CategoricalColorPreset {
 export interface CategoricalColorOptions {
   /** Plage de teinte en degrés (défaut : [0, 360]) */
   hueRange?: Range;
+  /** Offset (rotation) de teinte en degrés, appliqué à toutes les couleurs (défaut : 0) */
+  hueOffset?: number;
   /** Plage de chroma oklch (défaut : [0.15, 0.25]) */
   chromaRange?: Range;
   /** Plage de luminosité oklch, valeurs 0–1 (défaut : [0.5, 0.75]) */

@@ -1,6 +1,6 @@
 # @ateliercartographie/ok-palette
 
-Générateur de palettes de couleurs séquentielles et catégorielles pour la **dataviz** et la **cartographie**.
+Générateur de palettes de couleurs séquentielles, divergentes et catégorielles pour la **dataviz** et la **cartographie**.
 
 Zéro dépendance. Repose entièrement sur les capacités CSS modernes des navigateurs (`oklch`, `color-mix()`) pour garantir des résultats perceptuellement uniformes.
 
@@ -15,6 +15,8 @@ pnpm add @ateliercartographie/ok-palette
 ```ts
 import {
   sequential,
+  divergent,
+  divergentSequential,
   categorical,
   categoricalPatterns,
   sequentialPatterns,
@@ -35,11 +37,30 @@ const biTone = sequential({
   contrast: "high",
 });
 
+// Palette divergente symétrique (3+1+3 classes)
+const div = divergent({ colorA: "#3b4cc0" });
+
+// Palette divergente asymétrique, interpolation oklch
+const divLch = divergent({
+  colorA: "#d7191c",
+  colorB: "#2b83ba",
+  steps: [5, 2],
+  contrast: "high",
+  colorSpace: "oklch",
+});
+
+// Palette divergente basée sur deux sequential miroir
+const divSeq = divergentSequential({ colorA: "steelblue" });
+
 // Palette catégorielle (8 couleurs vives)
 const colors = categorical(8, presets.vif);
 
-// Palette catégorielle chaude
-const warm = categorical(6, { ...presets.vif, ...temperature.chaude });
+// Palette catégorielle chaude avec offset de teinte
+const warm = categorical(6, {
+  ...presets.vif,
+  ...temperature.chaude,
+  hueOffset: 30,
+});
 
 // Motifs catégoriels pour motif.js
 const patterns = categoricalPatterns(6);
@@ -76,15 +97,84 @@ La couleur de départ est normalisée en ton clair (chroma réduite de moitié p
 
 L'interpolation est entièrement déléguée au navigateur via `color-mix(in oklch, …)` : aucune librairie de couleur n'est nécessaire.
 
+### `divergent(options)`
+
+Génère une palette divergente (bi-polaire) autour d'un pivot teinté.
+
+| Option           | Type                          | Défaut                     | Description                                   |
+| ---------------- | ----------------------------- | -------------------------- | --------------------------------------------- |
+| `colorA`         | `string`                      | —                          | Couleur de l'extrême gauche (CSS valide)      |
+| `colorB`         | `string?`                     | complémentaire de `colorA` | Couleur de l'extrême droite                   |
+| `steps`          | `[number, number]`            | `[3, 3]`                   | Nombre de classes par côté `[gauche, droite]` |
+| `contrast`       | `"low" \| "normal" \| "high"` | `"normal"`                 | Profil de contraste                           |
+| `hasCenterClass` | `boolean`                     | `true`                     | Ajouter une classe centrale neutre            |
+| `colorSpace`     | `"oklab" \| "oklch"`          | `"oklab"`                  | Espace d'interpolation des rampes             |
+
+**Retourne** `string[]` — Couleurs CSS.
+
+#### Comment ça marche
+
+Les deux extrêmes convergent vers un **pivot teinté** automatiquement dérivé : c'est le milieu OkLab des versions claires et très désaturées de A et B. Comme A et B sont opposées sur la roue chromatique, leurs composantes s'annulent presque entièrement dans OkLab, produisant un quasi-neutre légèrement teinté — visuellement intégré à la palette plutôt qu'un gris "étranger".
+
+- `colorSpace: "oklab"` (défaut) : trajectoire cartésienne — plus douce, évite les teintes parasites
+- `colorSpace: "oklch"` : trajectoire circulaire sur la roue des teintes — plus saturée au centre
+
+```ts
+// Symétrique par défaut (7 classes : 3 + pivot + 3)
+divergent({ colorA: "#3b4cc0" });
+
+// Asymétrique, contraste élevé, interpolation oklch
+divergent({
+  colorA: "#d7191c",
+  colorB: "#2b83ba",
+  steps: [5, 2],
+  contrast: "high",
+  colorSpace: "oklch",
+});
+
+// Pair sans classe centrale (6 classes)
+divergent({ colorA: "steelblue", steps: [3, 3], hasCenterClass: false });
+```
+
+### `divergentSequential(options)`
+
+Génère une palette divergente construite comme deux `sequential()` miroir — garantit une cohérence totale avec la palette séquentielle.
+
+Accepte les mêmes options que `divergent()` **sauf** `colorSpace` (l'interpolation est toujours oklch, comme dans `sequential`).
+
+| Option           | Type                          | Défaut         | Description                        |
+| ---------------- | ----------------------------- | -------------- | ---------------------------------- |
+| `colorA`         | `string`                      | —              | Couleur de l'extrême gauche        |
+| `colorB`         | `string?`                     | complémentaire | Couleur de l'extrême droite        |
+| `steps`          | `[number, number]`            | `[3, 3]`       | Nombre de classes par côté         |
+| `contrast`       | `"low" \| "normal" \| "high"` | `"normal"`     | Profil de contraste                |
+| `hasCenterClass` | `boolean`                     | `true`         | Ajouter une classe centrale neutre |
+
+**Retourne** `string[]` — Couleurs CSS.
+
+```ts
+// Rigoureusement identique à deux `sequential` miroir
+divergentSequential({ colorA: "#3b4cc0" });
+
+// Asymétrique sans classe centrale
+divergentSequential({
+  colorA: "#d7191c",
+  colorB: "#2b83ba",
+  steps: [5, 2],
+  hasCenterClass: false,
+});
+```
+
 ### `categorical(count, options?)`
 
 Génère une palette catégorielle de couleurs.
 
-| Option           | Type               | Défaut         | Description                     |
-| ---------------- | ------------------ | -------------- | ------------------------------- |
-| `hueRange`       | `[number, number]` | `[0, 360]`     | Plage de teinte (degrés)        |
-| `chromaRange`    | `[number, number]` | `[0.15, 0.25]` | Plage de chroma oklch           |
-| `lightnessRange` | `[number, number]` | `[0.5, 0.75]`  | Plage de luminosité oklch (0–1) |
+| Option           | Type               | Défaut         | Description                                        |
+| ---------------- | ------------------ | -------------- | -------------------------------------------------- |
+| `hueRange`       | `[number, number]` | `[0, 360]`     | Plage de teinte (degrés)                           |
+| `hueOffset`      | `number`           | `0`            | Rotation de teinte appliquée à toutes les couleurs |
+| `chromaRange`    | `[number, number]` | `[0.15, 0.25]` | Plage de chroma oklch                              |
+| `lightnessRange` | `[number, number]` | `[0.5, 0.75]`  | Plage de luminosité oklch (0–1)                    |
 
 **Retourne** `string[]` — Couleurs CSS `oklch(…)`.
 
@@ -198,5 +288,7 @@ ISC — Atelier de cartographie de Sciences Po
 - [MDN — `color-mix()`](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/color-mix)
 - [ColorBrewer](https://colorbrewer2.org/)
 - [Mastering Multi-hued Color Scales](https://www.vis4.net/blog/mastering-multi-hued-color-scales/) — Gregor Aisch
+- [Séquence de Van der Corput](https://fr.wikipedia.org/wiki/Suite_de_van_der_Corput)
+- [@ateliercartographie/motif.js](https://github.com/AtelierCartographie/motif.js)
 - [Séquence de Van der Corput](https://fr.wikipedia.org/wiki/Suite_de_van_der_Corput)
 - [@ateliercartographie/motif.js](https://github.com/AtelierCartographie/motif.js)

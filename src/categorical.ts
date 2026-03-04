@@ -36,12 +36,16 @@ const C_FACTORS = [0.2, 0.8, 0.5] as const;
  *
  * // 6 couleurs chaudes
  * categorical(6, { hueRange: [300, 480] });
+ *
+ * // 4 couleurs avec teinte de départ à 45°
+ * categorical(4, { hueOffset: 45 });
  * ```
  */
 export function categorical(
   count: number,
   {
     hueRange = [0, 360],
+    hueOffset = 0,
     chromaRange = [0.15, 0.25],
     lightnessRange = [0.5, 0.75],
   }: CategoricalColorOptions = {}
@@ -51,7 +55,7 @@ export function categorical(
   for (let i = 0; i < count; i++) {
     // Teinte : Van der Corput pour une répartition optimale
     const fraction = i === 0 ? 0 : vanDerCorput(i);
-    const hue = lerp(hueRange, fraction);
+    const hue = (lerp(hueRange, fraction) + hueOffset) % 360;
 
     // Luminosité : oscillation tri-phase pour contraste entre voisins
     const lightness = lerp(lightnessRange, L_FACTORS[i % 3]);

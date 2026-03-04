@@ -69,10 +69,10 @@ export function divergent({
   // Pivot teinté : on construit d'abord deux variantes claires (startL) avec
   // chroma réduite, puis on prend leur milieu en OkLab.
   // Objectif : éviter le "gris pur" abrupt tout en gardant un centre lisible.
-  const pivotA = `oklch(from ${colorA} ${startL.toFixed(1)}% calc(c / 3) h)`;
+  const pivotA = `oklch(from ${colorA} ${startL.toFixed(1)}% calc(c / 8) h)`;
   const pivotB = colorB
-    ? `oklch(from ${colorB} ${startL.toFixed(1)}% calc(c / 3) h)`
-    : `oklch(from ${colorA} ${startL.toFixed(1)}% calc(c / 3) calc(h + 180))`;
+    ? `oklch(from ${colorB} ${startL.toFixed(1)}% calc(c / 8) h)`
+    : `oklch(from ${colorA} ${startL.toFixed(1)}% calc(c / 8) calc(h + 180))`;
   const cssPivot = `color-mix(in oklab, ${pivotA}, ${pivotB} 50%)`;
 
   const palette: CSSColor[] = [];
@@ -155,10 +155,10 @@ export function divergentSequential({
   const { start: startL_left } = getAdaptiveBounds(leftSteps, contrast);
   const { start: startL_right } = getAdaptiveBounds(rightSteps, contrast);
 
-  const lightA = `oklch(from ${colorA} ${startL_left.toFixed(1)}% calc(c / 4) h)`;
+  const lightA = `oklch(from ${colorA} ${startL_left.toFixed(1)}% 0.02 h)`;
   const lightB = colorB
-    ? `oklch(from ${colorB} ${startL_right.toFixed(1)}% calc(c / 4) h)`
-    : `oklch(from ${colorA} ${startL_right.toFixed(1)}% calc(c / 4) calc(h + 180))`;
+    ? `oklch(from ${colorB} ${startL_right.toFixed(1)}% 0.02 h)`
+    : `oklch(from ${colorA} ${startL_right.toFixed(1)}% 0.02 calc(h + 180))`;
 
   const centerClass = `color-mix(in oklab, ${lightA}, ${lightB} 50%)`;
 

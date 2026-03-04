@@ -225,11 +225,12 @@ $("div-center-class").addEventListener("change", updateDivergent);
 function getCategoricalOptions(): CategoricalColorOptions {
   const presetName = ($("cat-preset") as HTMLSelectElement).value;
   const tempName = ($("cat-temperature") as HTMLSelectElement).value;
+  const hueOffset = parseInt(($("cat-hue-offset") as HTMLInputElement).value, 10) || 0;
 
   if (presetName !== "custom") {
     const base = presets[presetName as keyof typeof presets] ?? presets.vif;
     const temp = tempName !== "none" ? temperature[tempName as keyof typeof temperature] : {};
-    return { ...base, ...temp };
+    return { ...base, ...temp, hueOffset };
   }
 
   // Custom
@@ -237,6 +238,7 @@ function getCategoricalOptions(): CategoricalColorOptions {
     hueRange: parseRange(($("cat-hue") as HTMLInputElement).value),
     chromaRange: parseRange(($("cat-chroma") as HTMLInputElement).value),
     lightnessRange: parseRange(($("cat-light") as HTMLInputElement).value),
+    hueOffset,
   };
 
   if (tempName !== "none") {
@@ -281,6 +283,7 @@ $("cat-light").addEventListener("input", () => {
   ($("cat-preset") as HTMLSelectElement).value = "custom";
   updateCategorical();
 });
+$("cat-hue-offset").addEventListener("input", updateCategorical);
 
 // ---------------------------------------------------------------------------
 // Motifs

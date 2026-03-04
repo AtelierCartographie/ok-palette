@@ -4,8 +4,8 @@ import { getAdaptiveBounds } from "./utils";
 /**
  * Génère une palette séquentielle (monochrome ou bi-tons).
  *
- * La couleur de départ est normalisée en ton clair (chroma réduite de moitié
- * pour éviter l'effet fluo), la couleur de fin en ton sombre.
+ * La couleur de départ est normalisée en ton clair (chroma réduite selon le profil
+ * de contraste pour éviter l'effet fluo), la couleur de fin en ton sombre.
  * L'écart de luminosité est adapté automatiquement au nombre de classes
  * grâce au profil de contraste choisi.
  *
@@ -33,8 +33,12 @@ export function sequential({
   const { start: startL, end: endL } = getAdaptiveBounds(steps, contrast);
 
   // Normalisation de la couleur de début (claire) :
-  // on réduit la chroma de moitié pour éviter l'effet fluo sur les tons clairs.
-  const cssStart = `oklch(from ${colorStart} ${startL.toFixed(1)}% calc(c / 2) h)`;
+  // on réduit la chroma selon le profil de contraste pour éviter l'effet fluo.
+  // - low : c / 1.5 (moins d'agressivité)
+  // - normal : c / 2.5 (équilibre)
+  // - high : c / 3.5 (plus de neutralité)
+  const chromaFactor = contrast === "low" ? 1.5 : contrast === "high" ? 3.5 : 2.5;
+  const cssStart = `oklch(from ${colorStart} ${startL.toFixed(1)}% calc(c / ${chromaFactor}) h)`;
 
   // Normalisation de la couleur de fin (sombre) :
   // on conserve la chroma originale.
