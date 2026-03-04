@@ -1,0 +1,46 @@
+{
+  "name": "@ateliercartographie/ok-palette",
+  "version": "0.1.0",
+  "description": "Générateur de palettes de couleurs séquentielles et catégorielles pour la dataviz et la cartographie",
+  "type": "module",
+  "main": "./dist/ok-palette.cjs",
+  "module": "./dist/ok-palette.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/ok-palette.js",
+      "require": "./dist/ok-palette.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite serve demo",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "color",
+    "palette",
+    "dataviz",
+    "cartography",
+    "oklch",
+    "sequential",
+    "categorical",
+    "pattern"
+  ],
+  "author": "Atelier de cartographie de Sciences Po",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AtelierCartographie/ok-palette.git"
+  },
+  "packageManager": "pnpm@10.17.1",
+  "devDependencies": {
+    "@ateliercartographie/motif.js": "^0.1.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}

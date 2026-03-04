@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Palette Generator — Demo</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+      }
+
+      :root {
+        --bg: #0e0e10;
+        --surface: #1a1a1e;
+        --border: #2a2a30;
+        --text: #e4e4e8;
+        --text-muted: #8e8e96;
+        --accent: oklch(72% 0.18 250);
+        --radius: 8px;
+      }
+
+      html[data-theme="light"] {
+        --bg: #f5f6f8;
+        --surface: #ffffff;
+        --border: #d6d9e0;
+        --text: #1e2430;
+        --text-muted: #5c6678;
+      }
+
+      html {
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      body {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 4rem;
+      }
+
+      h1 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+      }
+
+      h1 span {
+        color: var(--accent);
+      }
+
+      .subtitle {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-bottom: 2.5rem;
+      }
+
+      .page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 2.5rem;
+      }
+
+      .header-text {
+        flex: 1;
+      }
+
+      .header-text .subtitle {
+        margin-bottom: 0;
+      }
+
+      .theme-switcher {
+        min-width: 130px;
+      }
+
+      h2 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      section {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .control {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+      }
+
+      label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      select {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--text);
+        padding: 0.4rem 0.6rem;
+        font-size: 0.85rem;
+        font-family: inherit;
+        min-width: 100px;
+      }
+
+      input[type="color"] {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 2px;
+        background: var(--bg);
+        cursor: pointer;
+      }
+
+      .color-input-group {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.4rem;
+      }
+
+      /* Palette display */
+      .palette-row {
+        display: flex;
+        border-radius: var(--radius);
+        overflow: hidden;
+        height: 56px;
+      }
+
+      .palette-row .swatch {
+        flex: 1;
+        position: relative;
+        transition: flex 0.15s ease;
+        cursor: pointer;
+      }
+
+      .palette-row .swatch:hover {
+        flex: 2;
+      }
+
+      .palette-row .swatch .tooltip {
+        display: none;
+        position: absolute;
+        bottom: -28px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-size: 0.7rem;
+        white-space: nowrap;
+        z-index: 10;
+        color: var(--text);
+      }
+
+      .palette-row .swatch:hover .tooltip {
+        display: block;
+      }
+
+      .output-section {
+        margin-top: 1rem;
+      }
+
+      .output-section summary {
+        cursor: pointer;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+      }
+
+      pre {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 0.75rem;
+        font-size: 0.75rem;
+        overflow-x: auto;
+        line-height: 1.5;
+        color: var(--text-muted);
+      }
+
+      /* Patterns grid */
+      .patterns-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .pattern-card {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 0.75rem;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        width: 200px;
+        line-height: 1.5;
+      }
+
+      .pattern-card strong {
+        color: var(--text);
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+
+      .pattern-preview {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        height: auto;
+        display: block;
+        margin-bottom: 0.4rem;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        background: #fff;
+      }
+
+      .pattern-meta {
+        line-height: 1.4;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-header">
+      <div class="header-text">
+        <h1>🎨 <span>palette-generator</span></h1>
+        <p class="subtitle">
+          Générateur de palettes séquentielles &amp; catégorielles pour la dataviz et la cartographie
+        </p>
+      </div>
+      <div class="control theme-switcher">
+        <label>Thème</label>
+        <select id="theme-select">
+          <option value="dark" selected>Sombre</option>
+          <option value="light">Clair</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- ===== SÉQUENTIELLE ===== -->
+    <section>
+      <h2>Palette séquentielle</h2>
+      <div class="controls">
+        <div class="control">
+          <label>Couleur de départ</label>
+          <div class="color-input-group">
+            <input type="color" id="seq-color-start" value="#4ea8de" />
+            <input type="text" id="seq-color-start-text" value="#4ea8de" style="width: 90px" />
+          </div>
+        </div>
+        <div class="control">
+          <label>Couleur de fin (vide = mono)</label>
+          <div class="color-input-group">
+            <input type="color" id="seq-color-end" value="#1d3557" />
+            <input type="text" id="seq-color-end-text" value="" placeholder="monochrome" style="width: 90px" />
+          </div>
+        </div>
+        <div class="control">
+          <label>Classes</label>
+          <input type="number" id="seq-steps" value="5" min="2" max="12" style="width: 60px" />
+        </div>
+        <div class="control">
+          <label>Contraste</label>
+          <select id="seq-contrast">
+            <option value="low">Low</option>
+            <option value="normal" selected>Normal</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </div>
+      <div class="palette-row" id="seq-palette"></div>
+      <details class="output-section">
+        <summary>Voir les valeurs</summary>
+        <pre id="seq-output"></pre>
+      </details>
+    </section>
+
+    <!-- ===== DIVERGENTE ===== -->
+    <section>
+      <h2>Palette divergente</h2>
+      <div class="controls">
+        <div class="control">
+          <label>Couleur A (extrême gauche)</label>
+          <div class="color-input-group">
+            <input type="color" id="div-color-a" value="#3b4cc0" />
+            <input type="text" id="div-color-a-text" value="#3b4cc0" style="width: 90px" />
+          </div>
+        </div>
+        <div class="control">
+          <label>Couleur B (vide = complémentaire de A)</label>
+          <div class="color-input-group">
+            <input type="color" id="div-color-b" value="#f7b801" />
+            <input type="text" id="div-color-b-text" value="" placeholder="complémentaire auto" style="width: 90px" />
+          </div>
+        </div>
+        <div class="control">
+          <label>Classes à gauche</label>
+          <input type="number" id="div-steps-left" value="3" min="1" max="12" style="width: 60px" />
+        </div>
+        <div class="control">
+          <label>Classes à droite</label>
+          <input type="number" id="div-steps-right" value="3" min="1" max="12" style="width: 60px" />
+        </div>
+        <div class="control">
+          <label>Contraste</label>
+          <select id="div-contrast">
+            <option value="low">Low</option>
+            <option value="normal" selected>Normal</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div class="control">
+          <label>
+            <input type="checkbox" id="div-center-class" checked />
+            Classe centrale neutre
+          </label>
+        </div>
+      </div>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em;">OkLab &mdash; interpolation cartésienne (défaut recommandé)</p>
+      <div class="palette-row" id="div-palette-oklab"></div>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.75rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.05em;">OkLCH &mdash; interpolation circulaire (différence visible avec couleurs non-complémentaires, ex: bleu → rouge)</p>
+      <div class="palette-row" id="div-palette-oklch"></div>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.75rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.05em;">Séquentiel × 2 &mdash; deux sequential() miroir, cohérence maximale</p>
+      <div class="palette-row" id="div-palette-seq"></div>
+      <details class="output-section">
+        <summary>Voir les valeurs</summary>
+        <pre id="div-output"></pre>
+      </details>
+    </section>
+
+    <!-- ===== CATÉGORIELLE ===== -->
+    <section>
+      <h2>Palette catégorielle</h2>
+      <div class="controls">
+        <div class="control">
+          <label>Nombre</label>
+          <input type="number" id="cat-count" value="8" min="1" max="100" style="width: 60px" />
+        </div>
+        <div class="control">
+          <label>Preset</label>
+          <select id="cat-preset">
+            <option value="vif" selected>Vif</option>
+            <option value="pastel">Pastel</option>
+            <option value="sepia">Sépia</option>
+            <option value="custom">Personnalisé</option>
+          </select>
+        </div>
+        <div class="control">
+          <label>Température</label>
+          <select id="cat-temperature">
+            <option value="none" selected>—</option>
+            <option value="mixte">Mixte</option>
+            <option value="chaude">Chaude</option>
+            <option value="froide">Froide</option>
+          </select>
+        </div>
+        <div class="control" id="cat-hue-group">
+          <label>Hue range</label>
+          <input type="text" id="cat-hue" value="0, 360" style="width: 80px" />
+        </div>
+        <div class="control" id="cat-chroma-group">
+          <label>Chroma range</label>
+          <input type="text" id="cat-chroma" value="0.15, 0.25" style="width: 80px" />
+        </div>
+        <div class="control" id="cat-light-group">
+          <label>Lightness range</label>
+          <input type="text" id="cat-light" value="0.5, 0.75" style="width: 80px" />
+        </div>
+      </div>
+      <div class="palette-row" id="cat-palette"></div>
+      <details class="output-section">
+        <summary>Voir les valeurs</summary>
+        <pre id="cat-output"></pre>
+      </details>
+    </section>
+
+    <!-- ===== MOTIFS ===== -->
+    <section>
+      <h2>Motifs catégoriels</h2>
+      <div class="controls">
+        <div class="control">
+          <label>Nombre</label>
+          <input type="number" id="pat-count" value="6" min="1" max="24" style="width: 60px" />
+        </div>
+        <div class="control">
+          <label>Formes</label>
+          <input type="text" id="pat-shapes" value="line, circle, plaid, triangle" style="width: 200px" />
+        </div>
+        <div class="control">
+          <label>Angle range</label>
+          <input type="text" id="pat-angles" value="0, 180" style="width: 80px" />
+        </div>
+        <div class="control">
+          <label>Scale range</label>
+          <input type="text" id="pat-scales" value="2.5, 5" style="width: 80px" />
+        </div>
+        <div class="control">
+          <label>Couleur</label>
+          <select id="pat-colorize">
+            <option value="on" selected>categorical()</option>
+            <option value="off">Fixe (fill)</option>
+          </select>
+        </div>
+      </div>
+      <div class="patterns-grid" id="pat-grid"></div>
+      <details class="output-section">
+        <summary>Voir les paramètres JSON</summary>
+        <pre id="pat-output"></pre>
+      </details>
+    </section>
+
+    <!-- ===== MOTIFS SÉQUENTIELS ===== -->
+    <section>
+      <h2>Motifs séquentiels</h2>
+      <div class="controls">
+        <div class="control">
+          <label>Classes</label>
+          <input type="number" id="spat-count" value="5" min="1" max="12" style="width: 60px" />
+        </div>
+        <div class="control">
+          <label>Forme</label>
+          <select id="spat-shape">
+            <option value="line" selected>Line</option>
+            <option value="circle">Circle</option>
+            <option value="plaid">Plaid</option>
+            <option value="square">Square</option>
+          </select>
+        </div>
+        <div class="control">
+          <label>Contraste</label>
+          <select id="spat-contrast">
+            <option value="low">Low</option>
+            <option value="normal" selected>Normal</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div class="control">
+          <label>Size range</label>
+          <input type="text" id="spat-sizes" value="10, 90" style="width: 80px" />
+        </div>
+      </div>
+      <div class="patterns-grid" id="spat-grid"></div>
+      <details class="output-section">
+        <summary>Voir les paramètres JSON</summary>
+        <pre id="spat-output"></pre>
+      </details>
+    </section>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
