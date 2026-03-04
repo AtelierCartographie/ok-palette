@@ -1,10 +1,10 @@
 import type { CSSColor, WebGLColor, ColorFormat } from "./types";
 
 /**
- * Crée un contexte OffscreenCanvas 2D partagé (singleton paresseux).
+ * Creates a shared OffscreenCanvas 2D context (lazy singleton).
  *
- * On utilise OffscreenCanvas pour ne jamais toucher au DOM principal.
- * Le flag `willReadFrequently` optimise les lectures répétées de pixels.
+ * OffscreenCanvas is used to avoid touching the main DOM.
+ * The `willReadFrequently` flag optimizes repeated pixel reads.
  */
 let _ctx: OffscreenCanvasRenderingContext2D | null = null;
 
@@ -14,26 +14,26 @@ function getContext(): OffscreenCanvasRenderingContext2D {
       willReadFrequently: true,
     });
     if (!_ctx) {
-      throw new Error("Impossible de créer un contexte OffscreenCanvas 2D");
+      throw new Error("Could not create an OffscreenCanvas 2D context");
     }
   }
   return _ctx;
 }
 
 /**
- * Résout une couleur CSS complexe vers une valeur exploitable.
+ * Resolves a complex CSS color to a usable value.
  *
- * **Format `"css"`** (défaut) : retourne la couleur telle que le navigateur
- * l'a calculée (peut être `oklch(…)`, `rgba(…)`, etc.).
+ * **`"css"` format** (default): returns the color as computed by the browser
+ * (may be `oklch(…)`, `rgba(…)`, etc.).
  *
- * **Format `"webgl"`** : dessine un pixel et lit les données brutes pour
- * obtenir un tuple `[r, g, b, a]` (0–255). C'est l'approche la plus fiable
- * car elle gère oklch, display-p3, lab, etc.
+ * **`"webgl"` format**: draws a pixel and reads raw data to obtain a
+ * `[r, g, b, a]` tuple (0–255). This is the most reliable approach
+ * as it handles oklch, display-p3, lab, etc.
  *
  * @example
  * ```ts
  * resolveColor("color-mix(in oklch, red, blue 50%)");
- * // → "oklch(0.546 0.223 351.6)" (selon le navigateur)
+ * // → "oklch(0.546 0.223 351.6)" (browser-dependent)
  *
  * resolveColor("color-mix(in oklch, red, blue 50%)", { format: "webgl" });
  * // → [188, 0, 182, 255]
@@ -47,14 +47,14 @@ export function resolveColor(
 ): CSSColor | WebGLColor {
   const ctx = getContext();
 
-  // Assigner la couleur pour que le navigateur la parse
+  // Assign the color so the browser parses it
   ctx.fillStyle = color;
 
   if (format === "css") {
     return ctx.fillStyle;
   }
 
-  // Format WebGL : dessin + lecture du pixel pour être sûr d'obtenir du sRGB
+  // WebGL format: draw + read pixel to reliably get sRGB values
   ctx.clearRect(0, 0, 1, 1);
   ctx.fillRect(0, 0, 1, 1);
   const { data } = ctx.getImageData(0, 0, 1, 1);
@@ -63,7 +63,7 @@ export function resolveColor(
 }
 
 /**
- * Résout un tableau complet de couleurs CSS.
+ * Resolves a full array of CSS colors.
  *
  * @example
  * ```ts

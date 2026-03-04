@@ -2,22 +2,22 @@ import type { CSSColor, SequentialPaletteOptions } from "./types";
 import { getAdaptiveBounds } from "./utils";
 
 /**
- * Génère une palette séquentielle (monochrome ou bi-tons).
+ * Generates a sequential palette (monochrome or two-tone).
  *
- * La couleur de départ est normalisée en ton clair (chroma réduite selon le profil
- * de contraste pour éviter l'effet fluo), la couleur de fin en ton sombre.
- * L'écart de luminosité est adapté automatiquement au nombre de classes
- * grâce au profil de contraste choisi.
+ * The start color is normalized to a light tone (chroma reduced according to the
+ * contrast profile to avoid a fluorescent effect), the end color to a dark tone.
+ * The lightness range is automatically adapted to the number of classes
+ * via the chosen contrast profile.
  *
- * L'interpolation repose entièrement sur `color-mix(in oklch, …)` :
- * aucune dépendance externe n'est nécessaire, le navigateur fait le calcul.
+ * Interpolation relies entirely on `color-mix(in oklch, …)`:
+ * no external dependency is needed — the browser does the computation.
  *
  * @example
  * ```ts
- * // Palette monochrome 5 classes
+ * // 5-class monochrome palette
  * sequential({ colorStart: "steelblue" });
  *
- * // Palette bi-tons 7 classes, contraste élevé
+ * // 7-class two-tone palette, high contrast
  * sequential({ colorStart: "#f4e285", colorEnd: "#1d3557", steps: 7, contrast: "high" });
  * ```
  */
@@ -27,21 +27,21 @@ export function sequential({
   steps = 5,
   contrast = "normal",
 }: SequentialPaletteOptions): CSSColor[] {
-  // Mono ou bichrome : si pas de couleur de fin, on utilise la même
+  // Mono or two-tone: if no end color provided, reuse the start color
   const endColor = colorEnd ?? colorStart;
 
   const { start: startL, end: endL } = getAdaptiveBounds(steps, contrast);
 
-  // Normalisation de la couleur de début (claire) :
-  // on réduit la chroma selon le profil de contraste pour éviter l'effet fluo.
-  // - low : c / 1.5 (moins d'agressivité)
-  // - normal : c / 2.5 (équilibre)
-  // - high : c / 3.5 (plus de neutralité)
+  // Normalize the start color (light):
+  // reduce chroma according to the contrast profile to avoid a fluorescent effect.
+  // - low : c / 1.5 (less aggressive)
+  // - normal : c / 2.5 (balanced)
+  // - high : c / 3.5 (more neutral)
   const chromaFactor = contrast === "low" ? 1.5 : contrast === "high" ? 3.5 : 2.5;
   const cssStart = `oklch(from ${colorStart} ${startL.toFixed(1)}% calc(c / ${chromaFactor}) h)`;
 
-  // Normalisation de la couleur de fin (sombre) :
-  // on conserve la chroma originale.
+  // Normalize the end color (dark):
+  // preserve the original chroma.
   const cssEnd = `oklch(from ${endColor} ${endL.toFixed(1)}% c h)`;
 
   const palette: CSSColor[] = [];

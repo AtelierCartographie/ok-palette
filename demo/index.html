@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -251,31 +251,31 @@
       <div class="header-text">
         <h1>🎨 <span>palette-generator</span></h1>
         <p class="subtitle">
-          Générateur de palettes séquentielles &amp; catégorielles pour la dataviz et la cartographie
+          Sequential &amp; categorical palette generator for dataviz and cartography
         </p>
       </div>
       <div class="control theme-switcher">
-        <label>Thème</label>
+        <label>Theme</label>
         <select id="theme-select">
-          <option value="dark" selected>Sombre</option>
-          <option value="light">Clair</option>
+          <option value="dark" selected>Dark</option>
+          <option value="light">Light</option>
         </select>
       </div>
     </div>
 
-    <!-- ===== SÉQUENTIELLE ===== -->
+    <!-- ===== SEQUENTIAL ===== -->
     <section>
-      <h2>Palette séquentielle</h2>
+      <h2>Sequential palette</h2>
       <div class="controls">
         <div class="control">
-          <label>Couleur de départ</label>
+          <label>Start color</label>
           <div class="color-input-group">
             <input type="color" id="seq-color-start" value="#4ea8de" />
             <input type="text" id="seq-color-start-text" value="#4ea8de" style="width: 90px" />
           </div>
         </div>
         <div class="control">
-          <label>Couleur de fin (vide = mono)</label>
+          <label>End color (empty = monochrome)</label>
           <div class="color-input-group">
             <input type="color" id="seq-color-end" value="#1d3557" />
             <input type="text" id="seq-color-end-text" value="" placeholder="monochrome" style="width: 90px" />
@@ -286,7 +286,7 @@
           <input type="number" id="seq-steps" value="5" min="2" max="12" style="width: 60px" />
         </div>
         <div class="control">
-          <label>Contraste</label>
+          <label>Contrast</label>
           <select id="seq-contrast">
             <option value="low">Low</option>
             <option value="normal" selected>Normal</option>
@@ -296,39 +296,39 @@
       </div>
       <div class="palette-row" id="seq-palette"></div>
       <details class="output-section">
-        <summary>Voir les valeurs</summary>
+        <summary>Show values</summary>
         <pre id="seq-output"></pre>
       </details>
     </section>
 
-    <!-- ===== DIVERGENTE ===== -->
+    <!-- ===== DIVERGENT ===== -->
     <section>
-      <h2>Palette divergente</h2>
+      <h2>Divergent palette</h2>
       <div class="controls">
         <div class="control">
-          <label>Couleur A (extrême gauche)</label>
+          <label>Color A (left extreme)</label>
           <div class="color-input-group">
             <input type="color" id="div-color-a" value="#3b4cc0" />
             <input type="text" id="div-color-a-text" value="#3b4cc0" style="width: 90px" />
           </div>
         </div>
         <div class="control">
-          <label>Couleur B (vide = complémentaire de A)</label>
+          <label>Color B (empty = complement of A)</label>
           <div class="color-input-group">
             <input type="color" id="div-color-b" value="#f7b801" />
-            <input type="text" id="div-color-b-text" value="" placeholder="complémentaire auto" style="width: 90px" />
+            <input type="text" id="div-color-b-text" value="" placeholder="auto complement" style="width: 90px" />
           </div>
         </div>
         <div class="control">
-          <label>Classes à gauche</label>
+          <label>Left classes</label>
           <input type="number" id="div-steps-left" value="3" min="1" max="12" style="width: 60px" />
         </div>
         <div class="control">
-          <label>Classes à droite</label>
+          <label>Right classes</label>
           <input type="number" id="div-steps-right" value="3" min="1" max="12" style="width: 60px" />
         </div>
         <div class="control">
-          <label>Contraste</label>
+          <label>Contrast</label>
           <select id="div-contrast">
             <option value="low">Low</option>
             <option value="normal" selected>Normal</option>
@@ -338,25 +338,25 @@
         <div class="control">
           <label>
             <input type="checkbox" id="div-center-class" checked />
-            Classe centrale neutre
+            Neutral center class
           </label>
         </div>
       </div>
-      <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em;">OkLab &mdash; interpolation cartésienne (défaut recommandé)</p>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em;">OkLab &mdash; Cartesian interpolation (recommended default)</p>
       <div class="palette-row" id="div-palette-oklab"></div>
-      <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.75rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.05em;">OkLCH &mdash; interpolation circulaire (différence visible avec couleurs non-complémentaires, ex: bleu → rouge)</p>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.75rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.05em;">OkLCH &mdash; Circular interpolation (visible difference with non-complementary colors, e.g. blue → red)</p>
       <div class="palette-row" id="div-palette-oklch"></div>
-      <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.75rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.05em;">Séquentiel × 2 &mdash; deux sequential() miroir, cohérence maximale</p>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.75rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.05em;">Sequential × 2 &mdash; two mirrored sequential() calls, maximum consistency</p>
       <div class="palette-row" id="div-palette-seq"></div>
       <details class="output-section">
-        <summary>Voir les valeurs</summary>
+        <summary>Show values</summary>
         <pre id="div-output"></pre>
       </details>
     </section>
 
-    <!-- ===== CATÉGORIELLE ===== -->
+    <!-- ===== CATEGORICAL ===== -->
     <section>
-      <h2>Palette catégorielle</h2>
+      <h2>Categorical palette</h2>
       <div class="controls">
         <div class="control">
           <label>Nombre</label>
@@ -365,19 +365,19 @@
         <div class="control">
           <label>Preset</label>
           <select id="cat-preset">
-            <option value="vif" selected>Vif</option>
+            <option value="vif" selected>Vivid</option>
             <option value="pastel">Pastel</option>
-            <option value="sepia">Sépia</option>
-            <option value="custom">Personnalisé</option>
+            <option value="sepia">Sepia</option>
+            <option value="custom">Custom</option>
           </select>
         </div>
         <div class="control">
-          <label>Température</label>
+          <label>Temperature</label>
           <select id="cat-temperature">
             <option value="none" selected>—</option>
-            <option value="mixte">Mixte</option>
-            <option value="chaude">Chaude</option>
-            <option value="froide">Froide</option>
+            <option value="mixte">Mixed</option>
+            <option value="chaude">Warm</option>
+            <option value="froide">Cool</option>
           </select>
         </div>
         <div class="control" id="cat-hue-group">
@@ -399,21 +399,21 @@
       </div>
       <div class="palette-row" id="cat-palette"></div>
       <details class="output-section">
-        <summary>Voir les valeurs</summary>
+        <summary>Show values</summary>
         <pre id="cat-output"></pre>
       </details>
     </section>
 
-    <!-- ===== MOTIFS ===== -->
+    <!-- ===== CATEGORICAL PATTERNS ===== -->
     <section>
-      <h2>Motifs catégoriels</h2>
+      <h2>Categorical patterns</h2>
       <div class="controls">
         <div class="control">
           <label>Nombre</label>
           <input type="number" id="pat-count" value="6" min="1" max="24" style="width: 60px" />
         </div>
         <div class="control">
-          <label>Formes</label>
+          <label>Shapes</label>
           <input type="text" id="pat-shapes" value="line, circle, plaid, triangle" style="width: 200px" />
         </div>
         <div class="control">
@@ -425,30 +425,30 @@
           <input type="text" id="pat-scales" value="2.5, 5" style="width: 80px" />
         </div>
         <div class="control">
-          <label>Couleur</label>
+          <label>Color</label>
           <select id="pat-colorize">
             <option value="on" selected>categorical()</option>
-            <option value="off">Fixe (fill)</option>
+            <option value="off">Fixed (fill)</option>
           </select>
         </div>
       </div>
       <div class="patterns-grid" id="pat-grid"></div>
       <details class="output-section">
-        <summary>Voir les paramètres JSON</summary>
+        <summary>Show JSON params</summary>
         <pre id="pat-output"></pre>
       </details>
     </section>
 
-    <!-- ===== MOTIFS SÉQUENTIELS ===== -->
+    <!-- ===== SEQUENTIAL PATTERNS ===== -->
     <section>
-      <h2>Motifs séquentiels</h2>
+      <h2>Sequential patterns</h2>
       <div class="controls">
         <div class="control">
           <label>Classes</label>
           <input type="number" id="spat-count" value="5" min="1" max="12" style="width: 60px" />
         </div>
         <div class="control">
-          <label>Forme</label>
+          <label>Shape</label>
           <select id="spat-shape">
             <option value="line" selected>Line</option>
             <option value="circle">Circle</option>
@@ -457,7 +457,7 @@
           </select>
         </div>
         <div class="control">
-          <label>Contraste</label>
+          <label>Contrast</label>
           <select id="spat-contrast">
             <option value="low">Low</option>
             <option value="normal" selected>Normal</option>
@@ -471,7 +471,7 @@
       </div>
       <div class="patterns-grid" id="spat-grid"></div>
       <details class="output-section">
-        <summary>Voir les paramètres JSON</summary>
+        <summary>Show JSON params</summary>
         <pre id="spat-output"></pre>
       </details>
     </section>

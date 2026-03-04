@@ -1,8 +1,11 @@
 # @ateliercartographie/ok-palette
 
-Générateur de palettes de couleurs séquentielles, divergentes et catégorielles pour la **dataviz** et la **cartographie**.
+Générateur de palettes de couleurs **séquentielles, divergentes et catégorielles** pour la **dataviz** et la **cartographie**. Génère aussi des **palettes de motifs** compatibles avec [@ateliercartographie/motif.js](https://github.com/AtelierCartographie/motif.js).
 
-Zéro dépendance. Repose entièrement sur les capacités CSS modernes des navigateurs (`oklch`, `color-mix()`) pour garantir des résultats perceptuellement uniformes.
+Zero dependencies. Relies entirely on modern browser CSS capabilities (`oklch`, `color-mix()`) to guarantee perceptually uniform results.
+
+**Created by:** [Thomas Ansart — Atelier de cartographie de Sciences Po](https://www.sciencespo.fr/cartographie/)  
+**License:** ISC
 
 ## Installation
 
@@ -10,7 +13,7 @@ Zéro dépendance. Repose entièrement sur les capacités CSS modernes des navig
 pnpm add @ateliercartographie/ok-palette
 ```
 
-## Utilisation rapide
+## Quick start
 
 ```ts
 import {
@@ -26,10 +29,10 @@ import {
   temperature,
 } from "@ateliercartographie/ok-palette";
 
-// Palette séquentielle monochrome (5 classes)
+// 5-class monochrome sequential palette
 const mono = sequential({ colorStart: "steelblue" });
 
-// Palette séquentielle bi-tons (7 classes, contraste élevé)
+// 7-class two-tone sequential palette, high contrast
 const biTone = sequential({
   colorStart: "#f4e285",
   colorEnd: "#1d3557",
@@ -37,10 +40,10 @@ const biTone = sequential({
   contrast: "high",
 });
 
-// Palette divergente symétrique (3+1+3 classes)
+// Symmetric diverging palette (3+1+3 classes)
 const div = divergent({ colorA: "#3b4cc0" });
 
-// Palette divergente asymétrique, interpolation oklch
+// Asymmetric diverging palette, oklch interpolation
 const divLch = divergent({
   colorA: "#d7191c",
   colorB: "#2b83ba",
@@ -49,26 +52,26 @@ const divLch = divergent({
   colorSpace: "oklch",
 });
 
-// Palette divergente basée sur deux sequential miroir
+// Diverging palette built as two mirrored sequential palettes
 const divSeq = divergentSequential({ colorA: "steelblue" });
 
-// Palette catégorielle (8 couleurs vives)
+// 8-color vivid categorical palette
 const colors = categorical(8, presets.vif);
 
-// Palette catégorielle chaude avec offset de teinte
+// Warm categorical palette with hue offset
 const warm = categorical(6, {
   ...presets.vif,
   ...temperature.chaude,
   hueOffset: 30,
 });
 
-// Motifs catégoriels pour motif.js
+// Categorical patterns for motif.js
 const patterns = categoricalPatterns(6);
 
-// Motifs séquentiels (taille progressive selon le contraste)
+// Sequential patterns (size progressively increases with contrast)
 const seqPatterns = sequentialPatterns(5, { shape: "line", contrast: "high" });
 
-// Résolution des couleurs CSS vers des valeurs exploitables
+// Resolve CSS colors to usable values
 const css = resolvePalette(mono); // string[]
 const webgl = resolvePalette(mono, { format: "webgl" }); // [r,g,b,a][]
 ```
@@ -77,53 +80,53 @@ const webgl = resolvePalette(mono, { format: "webgl" }); // [r,g,b,a][]
 
 ### `sequential(options)`
 
-Génère une palette séquentielle (monochrome ou bi-tons).
+Generates a sequential palette (monochrome or two-tone).
 
-| Option       | Type                          | Défaut       | Description                                              |
-| ------------ | ----------------------------- | ------------ | -------------------------------------------------------- |
-| `colorStart` | `string`                      | —            | Couleur CSS de départ (tons clairs)                      |
-| `colorEnd`   | `string?`                     | `colorStart` | Couleur CSS de fin (tons sombres). Si omise → monochrome |
-| `steps`      | `number`                      | `5`          | Nombre de classes (2–12)                                 |
-| `contrast`   | `"low" \| "normal" \| "high"` | `"normal"`   | Profil de contraste                                      |
+| Option       | Type                          | Default      | Description                                         |
+| ------------ | ----------------------------- | ------------ | --------------------------------------------------- |
+| `colorStart` | `string`                      | —            | CSS start color (light tones)                       |
+| `colorEnd`   | `string?`                     | `colorStart` | CSS end color (dark tones). If omitted → monochrome |
+| `steps`      | `number`                      | `5`          | Number of classes (2–12)                            |
+| `contrast`   | `"low" \| "normal" \| "high"` | `"normal"`   | Contrast profile                                    |
 
-**Retourne** `string[]` — Couleurs CSS `color-mix(in oklch, …)`.
+**Returns** `string[]` — CSS colors `color-mix(in oklch, …)`.
 
-#### Comment ça marche
+#### How it works
 
-La couleur de départ est normalisée en ton clair (chroma réduite de moitié pour éviter l'effet fluo), la couleur de fin en ton sombre. L'écart de luminosité est adapté automatiquement au nombre de classes grâce au profil de contraste, inspiré de l'analyse des palettes ColorBrewer :
+The start color is normalized to a light tone (chroma halved to avoid a fluorescent effect), the end color to a dark tone. The lightness range is automatically adapted to the number of classes via the contrast profile, inspired by ColorBrewer palette analysis:
 
-- **3 classes** → écart de ~30 %
-- **9 classes** → écart de ~70 %
+- **3 classes** → ~30% lightness gap
+- **9 classes** → ~70% lightness gap
 
-L'interpolation est entièrement déléguée au navigateur via `color-mix(in oklch, …)` : aucune librairie de couleur n'est nécessaire.
+Interpolation is entirely delegated to the browser via `color-mix(in oklch, …)`: no color library needed.
 
 ### `divergent(options)`
 
-Génère une palette divergente (bi-polaire) autour d'un pivot teinté.
+Generates a diverging (bipolar) palette around a tinted pivot.
 
-| Option           | Type                          | Défaut                     | Description                                   |
-| ---------------- | ----------------------------- | -------------------------- | --------------------------------------------- |
-| `colorA`         | `string`                      | —                          | Couleur de l'extrême gauche (CSS valide)      |
-| `colorB`         | `string?`                     | complémentaire de `colorA` | Couleur de l'extrême droite                   |
-| `steps`          | `[number, number]`            | `[3, 3]`                   | Nombre de classes par côté `[gauche, droite]` |
-| `contrast`       | `"low" \| "normal" \| "high"` | `"normal"`                 | Profil de contraste                           |
-| `hasCenterClass` | `boolean`                     | `true`                     | Ajouter une classe centrale neutre            |
-| `colorSpace`     | `"oklab" \| "oklch"`          | `"oklab"`                  | Espace d'interpolation des rampes             |
+| Option           | Type                          | Default                | Description                      |
+| ---------------- | ----------------------------- | ---------------------- | -------------------------------- |
+| `colorA`         | `string`                      | —                      | Left-extreme CSS color           |
+| `colorB`         | `string?`                     | complement of `colorA` | Right-extreme CSS color          |
+| `steps`          | `[number, number]`            | `[3, 3]`               | Classes per side `[left, right]` |
+| `contrast`       | `"low" \| "normal" \| "high"` | `"normal"`             | Contrast profile                 |
+| `hasCenterClass` | `boolean`                     | `true`                 | Add a neutral center class       |
+| `colorSpace`     | `"oklab" \| "oklch"`          | `"oklab"`              | Ramp interpolation color space   |
 
-**Retourne** `string[]` — Couleurs CSS.
+**Returns** `string[]` — CSS colors.
 
-#### Comment ça marche
+#### How it works
 
-Les deux extrêmes convergent vers un **pivot teinté** automatiquement dérivé : c'est le milieu OkLab des versions claires et très désaturées de A et B. Comme A et B sont opposées sur la roue chromatique, leurs composantes s'annulent presque entièrement dans OkLab, produisant un quasi-neutre légèrement teinté — visuellement intégré à la palette plutôt qu'un gris "étranger".
+Both extremes converge toward an automatically derived **tinted pivot**: the OkLab midpoint of light, highly-desaturated variants of A and B. Because A and B are opposite on the hue wheel, their components almost cancel in OkLab, producing a quasi-neutral, slightly-tinted tone — visually integrated rather than a foreign grey.
 
-- `colorSpace: "oklab"` (défaut) : trajectoire cartésienne — plus douce, évite les teintes parasites
-- `colorSpace: "oklch"` : trajectoire circulaire sur la roue des teintes — plus saturée au centre
+- `colorSpace: "oklab"` (default): Cartesian path — smoother, avoids hue artifacts
+- `colorSpace: "oklch"`: circular path on the hue wheel — more saturated at the center
 
 ```ts
-// Symétrique par défaut (7 classes : 3 + pivot + 3)
+// Default symmetric palette (7 classes: 3 + pivot + 3)
 divergent({ colorA: "#3b4cc0" });
 
-// Asymétrique, contraste élevé, interpolation oklch
+// Asymmetric, high contrast, oklch interpolation
 divergent({
   colorA: "#d7191c",
   colorB: "#2b83ba",
@@ -132,31 +135,31 @@ divergent({
   colorSpace: "oklch",
 });
 
-// Pair sans classe centrale (6 classes)
+// Even count without center class (6 classes)
 divergent({ colorA: "steelblue", steps: [3, 3], hasCenterClass: false });
 ```
 
 ### `divergentSequential(options)`
 
-Génère une palette divergente construite comme deux `sequential()` miroir — garantit une cohérence totale avec la palette séquentielle.
+Generates a diverging palette built as two mirrored `sequential()` calls — guarantees full consistency with the sequential palette.
 
-Accepte les mêmes options que `divergent()` **sauf** `colorSpace` (l'interpolation est toujours oklch, comme dans `sequential`).
+Accepts the same options as `divergent()` **except** `colorSpace` (interpolation is always oklch, as in `sequential`).
 
-| Option           | Type                          | Défaut         | Description                        |
-| ---------------- | ----------------------------- | -------------- | ---------------------------------- |
-| `colorA`         | `string`                      | —              | Couleur de l'extrême gauche        |
-| `colorB`         | `string?`                     | complémentaire | Couleur de l'extrême droite        |
-| `steps`          | `[number, number]`            | `[3, 3]`       | Nombre de classes par côté         |
-| `contrast`       | `"low" \| "normal" \| "high"` | `"normal"`     | Profil de contraste                |
-| `hasCenterClass` | `boolean`                     | `true`         | Ajouter une classe centrale neutre |
+| Option           | Type                          | Default    | Description                |
+| ---------------- | ----------------------------- | ---------- | -------------------------- |
+| `colorA`         | `string`                      | —          | Left-extreme color         |
+| `colorB`         | `string?`                     | complement | Right-extreme color        |
+| `steps`          | `[number, number]`            | `[3, 3]`   | Classes per side           |
+| `contrast`       | `"low" \| "normal" \| "high"` | `"normal"` | Contrast profile           |
+| `hasCenterClass` | `boolean`                     | `true`     | Add a neutral center class |
 
-**Retourne** `string[]` — Couleurs CSS.
+**Returns** `string[]` — CSS colors.
 
 ```ts
-// Rigoureusement identique à deux `sequential` miroir
+// Rigorously identical to two mirrored `sequential` calls
 divergentSequential({ colorA: "#3b4cc0" });
 
-// Asymétrique sans classe centrale
+// Asymmetric without center class
 divergentSequential({
   colorA: "#d7191c",
   colorB: "#2b83ba",
@@ -167,128 +170,126 @@ divergentSequential({
 
 ### `categorical(count, options?)`
 
-Génère une palette catégorielle de couleurs.
+Generates a categorical color palette.
 
-| Option           | Type               | Défaut         | Description                                        |
-| ---------------- | ------------------ | -------------- | -------------------------------------------------- |
-| `hueRange`       | `[number, number]` | `[0, 360]`     | Plage de teinte (degrés)                           |
-| `hueOffset`      | `number`           | `0`            | Rotation de teinte appliquée à toutes les couleurs |
-| `chromaRange`    | `[number, number]` | `[0.15, 0.25]` | Plage de chroma oklch                              |
-| `lightnessRange` | `[number, number]` | `[0.5, 0.75]`  | Plage de luminosité oklch (0–1)                    |
+| Option           | Type               | Default        | Description                        |
+| ---------------- | ------------------ | -------------- | ---------------------------------- |
+| `hueRange`       | `[number, number]` | `[0, 360]`     | Hue range in degrees               |
+| `hueOffset`      | `number`           | `0`            | Hue rotation applied to all colors |
+| `chromaRange`    | `[number, number]` | `[0.15, 0.25]` | Oklch chroma range                 |
+| `lightnessRange` | `[number, number]` | `[0.5, 0.75]`  | Oklch lightness range, values 0–1  |
 
-**Retourne** `string[]` — Couleurs CSS `oklch(…)`.
+**Returns** `string[]` — CSS colors `oklch(…)`.
 
 #### Presets
 
 ```ts
-presets.vif; // Couleurs saturées et lumineuses
-presets.pastel; // Couleurs douces et claires
-presets.sepia; // Tons chauds désaturés
+presets.vif; // Saturated, vivid colors
+presets.pastel; // Soft, light colors
+presets.sepia; // Warm, desaturated tones
 ```
 
-#### Filtres de température
+#### Temperature filters
 
 ```ts
-temperature.mixte; // Tout le cercle chromatique
-temperature.chaude; // Rouges, oranges, jaunes
-temperature.froide; // Verts, bleus, violets
+temperature.mixte; // Full hue wheel
+temperature.chaude; // Reds, oranges, yellows
+temperature.froide; // Greens, blues, purples
 ```
 
-Combinaison : `categorical(8, { ...presets.vif, ...temperature.chaude })`
+Combining: `categorical(8, { ...presets.vif, ...temperature.chaude })`
 
-#### Séquence de Van der Corput
+#### Van der Corput sequence
 
-La répartition des teintes repose sur la [séquence de Van der Corput](https://fr.wikipedia.org/wiki/Suite_de_van_der_Corput) en base 2. Elle comble systématiquement le plus grand trou disponible dans le cercle chromatique, garantissant une distance maximale entre les couleurs, quel que soit le nombre demandé.
+Hue distribution relies on the [Van der Corput sequence](https://en.wikipedia.org/wiki/Van_der_Corput_sequence) in base 2. It always fills the largest gap on the hue wheel, guaranteeing maximum distance between colors regardless of count.
 
-Performance : 10 000 couleurs en ~4 ms.
+Performance: 10 000 colors in ~4 ms.
 
 ### `categoricalPatterns(count, options?)`
 
-Génère des paramètres de motifs catégoriels compatible avec [@ateliercartographie/motif.js](https://github.com/AtelierCartographie/motif.js).
+Generates categorical pattern parameters compatible with [@ateliercartographie/motif.js](https://github.com/AtelierCartographie/motif.js).
 
-| Option       | Type               | Défaut                                    | Description             |
+| Option       | Type               | Default                                   | Description             |
 | ------------ | ------------------ | ----------------------------------------- | ----------------------- |
-| `shapes`     | `string[]`         | `["line", "circle", "plaid", "triangle"]` | Formes à cycler         |
-| `angleRange` | `[number, number]` | `[0, 180]`                                | Plage d'angles (degrés) |
-| `scaleRange` | `[number, number]` | `[2, 8]`                                  | Plage d'échelles        |
-| `size`       | `number`           | `10`                                      | Taille fixe             |
-| `fill`       | `string`           | `"#ffffff"`                               | Couleur de remplissage  |
-| `background` | `string`           | `"transparent"`                           | Couleur de fond         |
-| `patchSize`  | `boolean`          | `true`                                    | Activer patchSize       |
-| `vdcOffset`  | `number`           | `0`                                       | Décalage Van der Corput |
+| `shapes`     | `string[]`         | `["line", "circle", "plaid", "triangle"]` | Shapes to cycle through |
+| `angleRange` | `[number, number]` | `[0, 180]`                                | Angle range (degrees)   |
+| `scaleRange` | `[number, number]` | `[2, 8]`                                  | Scale range             |
+| `size`       | `number`           | `10`                                      | Fixed size              |
+| `fill`       | `string`           | `"#ffffff"`                               | Fill color              |
+| `background` | `string`           | `"transparent"`                           | Background color        |
+| `patchSize`  | `boolean`          | `true`                                    | Enable patchSize        |
+| `vdcOffset`  | `number`           | `0`                                       | Van der Corput offset   |
 
-**Retourne** `PatternParams[]`
+**Returns** `PatternParams[]`
 
 ### `sequentialPatterns(count, options?)`
 
-Génère des paramètres de motifs séquentiels compatibles avec [@ateliercartographie/motif.js](https://github.com/AtelierCartographie/motif.js).
+Generates sequential pattern parameters compatible with [@ateliercartographie/motif.js](https://github.com/AtelierCartographie/motif.js).
 
-La **taille** du motif progresse de façon monotone entre les classes, analogue à l'écart de luminosité dans les palettes de couleurs séquentielles. L'écart de taille est adapté au nombre de classes et au profil de contraste.
+Pattern **size** increases monotonically across classes, analogous to the lightness range in sequential color palettes. The size range is adapted to both the class count and the contrast profile.
 
-La forme reste fixe pour préserver la perception d'ordre.
+The shape is fixed to preserve the perception of order.
 
-| Option       | Type                          | Défaut          | Description                     |
-| ------------ | ----------------------------- | --------------- | ------------------------------- |
-| `shape`      | `string`                      | `"line"`        | Forme unique du motif           |
-| `sizeRange`  | `[number, number]`            | `[4, 14]`       | Plage de tailles [petit, grand] |
-| `angle`      | `number`                      | `45`            | Angle fixe (degrés)             |
-| `scale`      | `number`                      | `4`             | Échelle fixe                    |
-| `contrast`   | `"low" \| "normal" \| "high"` | `"normal"`      | Profil de contraste             |
-| `fill`       | `string`                      | `"#ffffff"`     | Couleur de remplissage          |
-| `background` | `string`                      | `"transparent"` | Couleur de fond                 |
-| `patchSize`  | `boolean`                     | `true`          | Activer patchSize               |
+| Option       | Type                          | Default         | Description               |
+| ------------ | ----------------------------- | --------------- | ------------------------- |
+| `shape`      | `string`                      | `"line"`        | Pattern shape             |
+| `sizeRange`  | `[number, number]`            | `[4, 14]`       | Size range [small, large] |
+| `angle`      | `number`                      | `45`            | Fixed angle (degrees)     |
+| `scale`      | `number`                      | `4`             | Fixed scale               |
+| `contrast`   | `"low" \| "normal" \| "high"` | `"normal"`      | Contrast profile          |
+| `fill`       | `string`                      | `"#ffffff"`     | Fill color                |
+| `background` | `string`                      | `"transparent"` | Background color          |
+| `patchSize`  | `boolean`                     | `true`          | Enable patchSize          |
 
-**Retourne** `PatternParams[]`
+**Returns** `PatternParams[]`
 
 ### `resolveColor(color, options?)`
 
-Résout une couleur CSS complexe (`color-mix(…)`, `oklch(from …)`, etc.) vers une valeur exploitable.
+Resolves a complex CSS color (`color-mix(…)`, `oklch(from …)`, etc.) to a usable value.
 
-- `{ format: "css" }` (défaut) → `string` calculée par le navigateur
+- `{ format: "css" }` (default) → `string` as computed by the browser
 - `{ format: "webgl" }` → `[r, g, b, a]` (0–255)
 
 ### `resolvePalette(colors, options?)`
 
-Applique `resolveColor` à un tableau entier de couleurs.
+Applies `resolveColor` to an entire array of colors.
 
-## Pourquoi cette approche ?
+## Why this approach?
 
-### Problème n°1 — L'espace colorimétrique
+### Problem 1 — Color space
 
-Le choix de l'espace d'interpolation change radicalement le résultat. Utiliser **oklch** garantit des sauts perceptuellement réguliers sur chaque composante (luminosité, chroma, teinte). En 2025, oklch est supporté par tous les navigateurs modernes.
+The choice of interpolation space dramatically changes the result. Using **oklch** guarantees perceptually uniform steps across each component (lightness, chroma, hue). As of 2025, oklch is supported by all modern browsers.
 
-### Problème n°2 — L'écart de luminosité
+### Problem 2 — Lightness range
 
-Une palette séquentielle ne fonctionne que si l'écart de luminosité entre la première et la dernière couleur est suffisant et adapté au nombre de classes. Cette librairie normalise automatiquement les couleurs d'entrée pour garantir un résultat lisible.
+A sequential palette only works if the lightness gap between the first and last color is sufficient and adapted to the number of classes. This library automatically normalizes input colors to guarantee a readable result.
 
 ### Solution
 
-- **Universelle** : normalise n'importe quelle couleur CSS avant de générer la palette
-- **Moderne** : zéro dépendance, repose sur `oklch` et `color-mix()` natifs
-- **Performante** : la séquence de Van der Corput génère des palettes catégorielles en temps constant, contrairement aux approches itératives type I Want Hue
+- **Universal**: normalizes any CSS color before generating the palette
+- **Modern**: zero dependencies, relies on native `oklch` and `color-mix()`
+- **Performant**: the Van der Corput sequence generates categorical palettes in constant time, unlike iterative approaches like I Want Hue
 
-## Développement
+## Development
 
 ```bash
-# Lancer la page de démo
+# Start the demo page
 pnpm dev
 
-# Build de la librairie
+# Build the library
 pnpm build
 ```
 
-## Licence
+## License
 
 ISC — Atelier de cartographie de Sciences Po
 
-## Ressources
+## Resources
 
 - [Chroma.js](https://gka.github.io/chroma.js) — Documentation
 - [Chroma.js Color Palette Helper](https://gka.github.io/palettes)
 - [MDN — `color-mix()`](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/color-mix)
 - [ColorBrewer](https://colorbrewer2.org/)
 - [Mastering Multi-hued Color Scales](https://www.vis4.net/blog/mastering-multi-hued-color-scales/) — Gregor Aisch
-- [Séquence de Van der Corput](https://fr.wikipedia.org/wiki/Suite_de_van_der_Corput)
-- [@ateliercartographie/motif.js](https://github.com/AtelierCartographie/motif.js)
-- [Séquence de Van der Corput](https://fr.wikipedia.org/wiki/Suite_de_van_der_Corput)
+- [Van der Corput sequence](https://en.wikipedia.org/wiki/Van_der_Corput_sequence)
 - [@ateliercartographie/motif.js](https://github.com/AtelierCartographie/motif.js)

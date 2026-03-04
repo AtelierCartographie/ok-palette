@@ -1,16 +1,16 @@
 // ---------------------------------------------------------------------------
-// @ateliercartographie/palette-generator
+// @ateliercartographie/ok-palette
 // ---------------------------------------------------------------------------
 
-// Générateurs — couleurs
+// Generators — colors
 export { sequential } from "./sequential";
 export { divergent, divergentSequential } from "./divergent";
 export { categorical } from "./categorical";
 
-// Générateurs — motifs
+// Generators — patterns
 export { categoricalPatterns, sequentialPatterns } from "./patterns";
 
-// Résolution de couleurs
+// Color resolution
 export { resolveColor, resolvePalette } from "./resolve";
 
 // Presets & configuration

@@ -1,14 +1,14 @@
 import type { CategoricalColorPreset, Range } from "./types";
 
 // ---------------------------------------------------------------------------
-// Presets catégoriels
+// Categorical presets
 // ---------------------------------------------------------------------------
 
 /**
- * Presets de style pour les palettes catégorielles.
+ * Style presets for categorical palettes.
  *
- * Chaque preset définit des plages de teinte, chroma et luminosité
- * qui produisent une ambiance visuelle distincte.
+ * Each preset defines hue, chroma and lightness ranges
+ * that produce a distinct visual mood.
  */
 export const presets = {
   vif: {
@@ -29,13 +29,13 @@ export const presets = {
 } as const satisfies Record<string, CategoricalColorPreset>;
 
 /**
- * Filtres de température de couleur.
+ * Color temperature filters.
  *
- * Combinés avec un preset de style (ex: `{ ...presets.vif, ...temperature.chaude }`),
- * ils permettent de restreindre la palette à des teintes chaudes ou froides.
+ * Combined with a style preset (e.g. `{ ...presets.vif, ...temperature.chaude }`),
+ * they restrict the palette to warm or cool hues.
  *
- * Note : `chaude` dépasse 360° pour couvrir la transition rouge → jaune
- * sans discontinuité.
+ * Note: `chaude` exceeds 360° to cover the red → yellow transition
+ * without discontinuity.
  */
 export const temperature = {
   mixte: { hueRange: [0, 360] as Range },

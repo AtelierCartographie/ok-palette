@@ -1,22 +1,22 @@
 import type { ContrastMode, ContrastProfiles, Range } from "./types";
 
 // ---------------------------------------------------------------------------
-// Constantes
+// Constants
 // ---------------------------------------------------------------------------
 
-/** Nombre minimum / maximum de classes pour l'interpolation du contraste */
+/** Minimum / maximum number of classes for contrast interpolation */
 const MIN_STEPS = 3;
 const MAX_STEPS = 9;
 
 /**
- * Profils de contraste prédéfinis.
+ * Predefined contrast profiles.
  *
- * Chaque profil définit des bornes de départ et de fin sous forme de plage
- * [valeur pour 3 classes, valeur pour 9+ classes].
- * L'interpolation se fait linéairement entre ces deux extrêmes.
+ * Each profile defines start and end bounds as a range
+ * [value for 3 classes, value for 9+ classes].
+ * Interpolation is linear between these two extremes.
  *
- * Utilisé à la fois pour la luminosité des palettes de couleurs
- * et pour la taille progressive des palettes de motifs.
+ * Used for both lightness in color palettes
+ * and progressive size in pattern palettes.
  */
 export const CONTRAST_PROFILES: ContrastProfiles = {
   low: {
@@ -34,14 +34,14 @@ export const CONTRAST_PROFILES: ContrastProfiles = {
 };
 
 // ---------------------------------------------------------------------------
-// Séquence de Van der Corput
+// Van der Corput sequence
 // ---------------------------------------------------------------------------
 
 /**
- * Séquence de Van der Corput en base 2.
+ * Van der Corput sequence in base 2.
  *
- * Retourne un réel dans [0, 1[ qui divise l'intervalle de façon optimale.
- * Garantit que les k premiers points sont toujours les k mieux espacés.
+ * Returns a real number in [0, 1) that splits the interval optimally.
+ * Guarantees that the first k points are always the k best-spaced ones.
  *
  * VdC(0) = 0, VdC(1) = 0.5, VdC(2) = 0.25, VdC(3) = 0.75, VdC(4) = 0.125…
  */
@@ -57,25 +57,25 @@ export function vanDerCorput(n: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Bornes adaptatives (générique)
+// Adaptive bounds (generic)
 // ---------------------------------------------------------------------------
 
-/** Résultat des bornes adaptatives */
+/** Result of adaptive bounds computation */
 export interface AdaptiveBounds {
   start: number;
   end: number;
 }
 
 /**
- * Calcule des bornes adaptatives en fonction du nombre de classes
- * et du profil de contraste choisi.
+ * Computes adaptive bounds based on the number of classes
+ * and the chosen contrast profile.
  *
- * L'interpolation est linéaire : à 3 classes on utilise la borne « peu de
- * classes », à 9+ on utilise la borne « beaucoup de classes ».
+ * Interpolation is linear: at 3 classes the "few classes" bound is used,
+ * at 9+ the "many classes" bound is used.
  *
- * C'est la brique commune utilisée pour :
- * - la luminosité des palettes de couleurs séquentielles
- * - la taille progressive des palettes de motifs séquentiels
+ * This is the shared building block used for:
+ * - lightness in sequential color palettes
+ * - progressive size in sequential pattern palettes
  */
 export function getAdaptiveBounds(
   steps: number,
@@ -83,7 +83,7 @@ export function getAdaptiveBounds(
 ): AdaptiveBounds {
   const profile = CONTRAST_PROFILES[mode] ?? CONTRAST_PROFILES.normal;
 
-  // Facteur t normalisé entre 0 (3 classes) et 1 (9+ classes)
+  // Normalized factor t between 0 (3 classes) and 1 (9+ classes)
   const t = Math.min(1, Math.max(0, (steps - MIN_STEPS) / (MAX_STEPS - MIN_STEPS)));
 
   const start = profile.start[0] + t * (profile.start[1] - profile.start[0]);
@@ -93,11 +93,11 @@ export function getAdaptiveBounds(
 }
 
 // ---------------------------------------------------------------------------
-// Interpolation linéaire
+// Linear interpolation
 // ---------------------------------------------------------------------------
 
 /**
- * Interpole linéairement dans une plage [min, max] pour un facteur t ∈ [0, 1].
+ * Linearly interpolates within a range [min, max] for a factor t ∈ [0, 1].
  */
 export function lerp(range: Range, t: number): number {
   return range[0] + t * (range[1] - range[0]);

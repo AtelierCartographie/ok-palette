@@ -2,155 +2,155 @@
 // Types
 // ---------------------------------------------------------------------------
 
-/** Profil de contraste pour les palettes séquentielles */
+/** Contrast profile for sequential palettes */
 export type ContrastMode = "low" | "normal" | "high";
 
-/** Format de sortie pour la résolution des couleurs */
+/** Output format for color resolution */
 export type ColorFormat = "css" | "webgl";
 
-/** Couleur CSS résolue (ex: "oklch(70% 0.15 230)") */
+/** Resolved CSS color (e.g. "oklch(70% 0.15 230)") */
 export type CSSColor = string;
 
-/** Couleur WebGL : tuple [r, g, b, a] avec valeurs 0–255 */
+/** WebGL color: tuple [r, g, b, a] with values 0–255 */
 export type WebGLColor = [r: number, g: number, b: number, a: number];
 
-/** Plage numérique [min, max] */
+/** Numeric range [min, max] */
 export type Range = [min: number, max: number];
 
 // ---------------------------------------------------------------------------
-// Palettes séquentielles
+// Sequential palettes
 // ---------------------------------------------------------------------------
 
-/** Profil de contraste : bornes de luminosité pour 3 classes et 9+ classes */
+/** Contrast profile: lightness bounds for 3 classes and 9+ classes */
 export interface ContrastProfile {
-  /** Luminosité de départ [pour 3 classes, pour 9+ classes] */
+  /** Start lightness [for 3 classes, for 9+ classes] */
   start: Range;
-  /** Luminosité de fin [pour 3 classes, pour 9+ classes] */
+  /** End lightness [for 3 classes, for 9+ classes] */
   end: Range;
 }
 
-/** Ensemble des profils de contraste indexés par mode */
+/** Set of contrast profiles indexed by mode */
 export type ContrastProfiles = Record<ContrastMode, ContrastProfile>;
 
-/** Options pour la génération de palette séquentielle */
+/** Options for sequential palette generation */
 export interface SequentialPaletteOptions {
-  /** Couleur de départ (CSS valide) – utilisée pour les tons clairs */
+  /** Start CSS color – used for light tones */
   colorStart: string;
-  /** Couleur de fin (CSS valide) – si omise, palette monochrome */
+  /** End CSS color – if omitted, produces a monochrome palette */
   colorEnd?: string;
-  /** Nombre de classes (défaut : 5) */
+  /** Number of classes (default: 5) */
   steps?: number;
-  /** Profil de contraste (défaut : "normal") */
+  /** Contrast profile (default: "normal") */
   contrast?: ContrastMode;
 }
 
-/** Espace colorimétrique d'interpolation pour la palette divergente */
+/** Interpolation color space for divergent palettes */
 export type DivergentColorSpace = "oklab" | "oklch";
 
-/** Options pour la génération de palette divergente */
+/** Options for divergent palette generation */
 export interface DivergentPaletteOptions {
-  /** Couleur de l'extrême gauche (CSS valide) */
+  /** Left-extreme color (valid CSS) */
   colorA: string;
-  /** Couleur de l'extrême droite (CSS valide) – si omise, utilise la complémentaire de colorA */
+  /** Right-extreme color (valid CSS) – if omitted, uses the complement of colorA */
   colorB?: string;
-  /** Nombre de classes par côté [gauche, droite] (défaut : [3, 3]) */
+  /** Number of classes per side [left, right] (default: [3, 3]) */
   steps?: [number, number];
-  /** Profil de contraste (défaut : "normal") */
+  /** Contrast profile (default: "normal") */
   contrast?: ContrastMode;
-  /** Ajouter une classe neutre centrale (défaut : true) */
+  /** Add a neutral center class (default: true) */
   hasCenterClass?: boolean;
   /**
-   * Espace colorimétrique pour l'interpolation de chaque rampe (défaut : "oklab").
-   * - "oklab" : trajectoire cartésienne — plus douce, évite les teintes parasites
-   * - "oklch" : trajectoire circulaire sur la roue des teintes — plus saturée au centre
+   * Color space for interpolating each ramp (default: "oklab").
+   * - "oklab": Cartesian path — smoother, avoids hue artifacts
+   * - "oklch": Circular path on the hue wheel — more saturated at the center
    */
   colorSpace?: DivergentColorSpace;
 }
 
 // ---------------------------------------------------------------------------
-// Palettes catégorielles – couleurs
+// Categorical palettes – colors
 // ---------------------------------------------------------------------------
 
-/** Preset de couleurs catégorielles */
+/** Categorical color preset */
 export interface CategoricalColorPreset {
   hueRange?: Range;
   chromaRange?: Range;
   lightnessRange?: Range;
 }
 
-/** Options pour la génération de couleurs catégorielles */
+/** Options for categorical color generation */
 export interface CategoricalColorOptions {
-  /** Plage de teinte en degrés (défaut : [0, 360]) */
+  /** Hue range in degrees (default: [0, 360]) */
   hueRange?: Range;
-  /** Offset (rotation) de teinte en degrés, appliqué à toutes les couleurs (défaut : 0) */
+  /** Hue offset (rotation) in degrees, applied to all colors (default: 0) */
   hueOffset?: number;
-  /** Plage de chroma oklch (défaut : [0.15, 0.25]) */
+  /** Oklch chroma range (default: [0.15, 0.25]) */
   chromaRange?: Range;
-  /** Plage de luminosité oklch, valeurs 0–1 (défaut : [0.5, 0.75]) */
+  /** Oklch lightness range, values 0–1 (default: [0.5, 0.75]) */
   lightnessRange?: Range;
 }
 
-/** Presets prédéfinis pour les couleurs catégorielles */
+/** Predefined categorical color presets */
 export interface CategoricalPresets {
   [key: string]: CategoricalColorPreset;
 }
 
-/** Filtres de température de couleur */
+/** Color temperature filters */
 export interface TemperaturePresets {
   [key: string]: { hueRange: Range };
 }
 
 // ---------------------------------------------------------------------------
-// Palettes catégorielles – motifs
+// Categorical palettes – patterns
 // ---------------------------------------------------------------------------
 
-/** Options pour la génération de motifs catégoriels */
+/** Options for categorical pattern generation */
 export interface CategoricalPatternOptions {
-  /** Formes à cycler (défaut : ["line", "circle", "plaid", "triangle"]) */
+  /** Shapes to cycle through (default: ["line", "circle", "plaid", "triangle"]) */
   shapes?: string[];
-  /** Plage d'angles en degrés (défaut : [0, 180]) */
+  /** Angle range in degrees (default: [0, 180]) */
   angleRange?: Range;
-  /** Plage d'échelles (défaut : [2, 8]) */
+  /** Scale range (default: [2, 8]) */
   scaleRange?: Range;
-  /** Taille fixe – poids visuel constant (défaut : 10) */
+  /** Fixed size – constant visual weight (default: 10) */
   size?: number;
-  /** Couleur de remplissage (défaut : "#ffffff") */
+  /** Fill color (default: "#ffffff") */
   fill?: string;
-  /** Couleur de fond (défaut : "transparent") */
+  /** Background color (default: "transparent") */
   background?: string;
-  /** Activer patchSize (défaut : true) */
+  /** Enable patchSize (default: true) */
   patchSize?: boolean;
-  /** Décalage dans la séquence de Van der Corput (défaut : 0) */
+  /** Offset into the Van der Corput sequence (default: 0) */
   vdcOffset?: number;
   /**
-   * Coloriser automatiquement les motifs avec `categorical`.
-   * - `true` → utilise les options par défaut de `categorical`
-   * - objet → options passées à `categorical`
+   * Automatically colorize patterns using `categorical`.
+   * - `true` → uses default `categorical` options
+   * - object → options passed to `categorical`
    */
   colorize?: boolean | CategoricalColorOptions;
 }
 
-/** Options pour la génération de motifs séquentiels */
+/** Options for sequential pattern generation */
 export interface SequentialPatternOptions {
-  /** Forme du motif (défaut : "line") */
+  /** Pattern shape (default: "line") */
   shape?: string;
-  /** Plage de taille [petit, grand] (défaut : [4, 14]) */
+  /** Size range [small, large] (default: [4, 14]) */
   sizeRange?: Range;
-  /** Angle fixe en degrés (défaut : 45) */
+  /** Fixed angle in degrees (default: 45) */
   angle?: number;
-  /** Échelle fixe (défaut : 4) */
+  /** Fixed scale (default: 4) */
   scale?: number;
-  /** Profil de contraste (défaut : "normal") */
+  /** Contrast profile (default: "normal") */
   contrast?: ContrastMode;
-  /** Couleur de remplissage (défaut : "#ffffff") */
+  /** Fill color (default: "#ffffff") */
   fill?: string;
-  /** Couleur de fond (défaut : "transparent") */
+  /** Background color (default: "transparent") */
   background?: string;
-  /** Activer patchSize (défaut : true) */
+  /** Enable patchSize (default: true) */
   patchSize?: boolean;
 }
 
-/** Paramètres d'un motif (compatible motif.js) */
+/** Pattern parameters (compatible with motif.js) */
 export interface PatternParams {
   type: string;
   angle: number;

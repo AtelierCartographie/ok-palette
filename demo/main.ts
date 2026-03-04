@@ -98,7 +98,7 @@ function renderPatternCards(
 }
 
 // ---------------------------------------------------------------------------
-// Séquentielle
+// Sequential
 // ---------------------------------------------------------------------------
 
 function updateSequential() {
@@ -125,13 +125,13 @@ function updateSequential() {
   );
 }
 
-// Synchroniser color picker ↔ text
+// Sync color picker ↔ text
 $("seq-color-start").addEventListener("input", (e) => {
   ($("seq-color-start-text") as HTMLInputElement).value = (e.target as HTMLInputElement).value;
   updateSequential();
 });
 $("seq-color-start-text").addEventListener("input", (e) => {
-  // Tenter de mettre à jour le color picker si la valeur est un hex valide
+  // Update the color picker if the value is a valid hex
   const val = (e.target as HTMLInputElement).value;
   if (/^#[0-9a-f]{6}$/i.test(val)) {
     ($("seq-color-start") as HTMLInputElement).value = val;
@@ -153,7 +153,7 @@ $("seq-steps").addEventListener("input", updateSequential);
 $("seq-contrast").addEventListener("change", updateSequential);
 
 // ---------------------------------------------------------------------------
-// Divergente
+// Divergent
 // ---------------------------------------------------------------------------
 
 function updateDivergent() {
@@ -184,13 +184,13 @@ function updateDivergent() {
   const resolvedSeq = resolvePalette(paletteSeq, { format: "css" });
 
   ($("div-output") as HTMLPreElement).textContent = JSON.stringify(
-    { oklab: resolvedOklab, oklch: resolvedOklch, sequentiel: resolvedSeq },
+    { oklab: resolvedOklab, oklch: resolvedOklch, sequential: resolvedSeq },
     null,
     2
   );
 }
 
-// Synchroniser color picker ↔ text
+// Sync color picker ↔ text
 $("div-color-a").addEventListener("input", (e) => {
   ($("div-color-a-text") as HTMLInputElement).value = (e.target as HTMLInputElement).value;
   updateDivergent();
@@ -219,7 +219,7 @@ $("div-contrast").addEventListener("change", updateDivergent);
 $("div-center-class").addEventListener("change", updateDivergent);
 
 // ---------------------------------------------------------------------------
-// Catégorielle
+// Categorical
 // ---------------------------------------------------------------------------
 
 function getCategoricalOptions(): CategoricalColorOptions {
@@ -258,7 +258,7 @@ function updateCategorical() {
   const resolved = resolvePalette(palette, { format: "css" });
   ($("cat-output") as HTMLPreElement).textContent = JSON.stringify(resolved, null, 2);
 
-  // Mettre à jour les champs custom avec les valeurs du preset actif
+  // Update custom fields with the values of the active preset
   const preset = ($("cat-preset") as HTMLSelectElement).value;
   if (preset !== "custom") {
     const base = presets[preset as keyof typeof presets] ?? presets.vif;
@@ -286,7 +286,7 @@ $("cat-light").addEventListener("input", () => {
 $("cat-hue-offset").addEventListener("input", updateCategorical);
 
 // ---------------------------------------------------------------------------
-// Motifs
+// Patterns
 // ---------------------------------------------------------------------------
 
 function updatePatterns() {
@@ -310,7 +310,7 @@ $("pat-scales").addEventListener("input", updatePatterns);
 $("pat-colorize").addEventListener("change", updatePatterns);
 
 // ---------------------------------------------------------------------------
-// Motifs séquentiels
+// Sequential patterns
 // ---------------------------------------------------------------------------
 
 function updateSeqPatterns() {
@@ -332,7 +332,7 @@ $("spat-contrast").addEventListener("change", updateSeqPatterns);
 $("spat-sizes").addEventListener("input", updateSeqPatterns);
 
 // ---------------------------------------------------------------------------
-// Thème
+// Theme
 // ---------------------------------------------------------------------------
 
 type ThemeMode = "dark" | "light";

@@ -8,27 +8,27 @@ import { categorical } from "./categorical";
 import { getAdaptiveBounds, lerp, vanDerCorput } from "./utils";
 
 // ---------------------------------------------------------------------------
-// Constantes partagées
+// Shared constants
 // ---------------------------------------------------------------------------
 
 /**
- * Facteurs d'oscillation sur 3 niveaux pour la variation d'échelle.
- * Dense → Aéré → Médium (même logique que L/C dans categorical colors).
+ * Three-level oscillation factors for scale variation.
+ * Dense → Open → Medium (same logic as L/C in categorical colors).
  */
 const SCALE_FACTORS = [0, 1, 0.5] as const;
 
 // ---------------------------------------------------------------------------
-// Catégoriel
+// Categorical
 // ---------------------------------------------------------------------------
 
 /**
- * Génère une palette catégorielle de motifs (paramètres pour motif.js).
+ * Generates a categorical pattern palette (parameters for motif.js).
  *
- * Le parallèle avec `categorical` (couleurs) est le suivant :
- * - **Forme**  ↔ Catégorie de teinte (dimension la plus perceptible, cycle strict)
- * - **Angle**  ↔ Valeur de teinte (distribué avec Van der Corput)
- * - **Échelle** ↔ Chroma (variation secondaire, 3 niveaux oscillants)
- * - **Taille** ↔ Luminosité (fixe → poids visuel constant)
+ * The parallel with `categorical` (colors) is as follows:
+ * - **Shape**  ↔ Hue category (most perceptible dimension, strict cycle)
+ * - **Angle**  ↔ Hue value (distributed with Van der Corput)
+ * - **Scale**  ↔ Chroma (secondary variation, 3 oscillating levels)
+ * - **Size**   ↔ Lightness (fixed → constant visual weight)
  *
  * @example
  * ```ts
@@ -63,14 +63,14 @@ export function categoricalPatterns(
     const round = Math.floor(i / n);
     const shape = shapes[shapeIndex];
 
-    // Angle : Van der Corput par forme avec offset pour espacer les séquences.
-    // Chaque forme suit sa propre progression VdC, décalée par un nombre premier
-    // pour éviter les angles similaires entre occurrences de la même forme.
-    const shapeOffset = shapeIndex * 17; // nombre premier
+    // Angle: Van der Corput per shape with offset to space sequences.
+    // Each shape follows its own VdC progression, shifted by a prime number
+    // to avoid similar angles between occurrences of the same shape.
+    const shapeOffset = shapeIndex * 17; // prime number
     const angleFraction = vanDerCorput(round + vdcOffset + shapeOffset);
     const angle = Math.round(lerp(angleRange, angleFraction));
 
-    // Échelle : oscillation tri-phase (dense → aéré → médium) par pattern
+    // Scale: three-phase oscillation (dense → open → medium) per pattern
     const scale = +lerp(scaleRange, SCALE_FACTORS[i % 3]).toFixed(2);
     const patternFill = palette?.[i] ?? fill;
 
@@ -79,25 +79,25 @@ export function categoricalPatterns(
 }
 
 // ---------------------------------------------------------------------------
-// Séquentiel
+// Sequential
 // ---------------------------------------------------------------------------
 
 /**
- * Génère une palette séquentielle de motifs (paramètres pour motif.js).
+ * Generates a sequential pattern palette (parameters for motif.js).
  *
- * La **taille** du motif progresse de façon monotone entre les classes,
- * analogue à l'écart de luminosité dans les palettes de couleurs.
- * L'écart de taille est adapté au nombre de classes et au profil de
- * contraste, exactement comme pour `sequential` (couleurs).
+ * Pattern **size** increases monotonically across classes,
+ * analogous to the lightness range in color palettes.
+ * The size range is adapted to the number of classes and contrast profile,
+ * exactly as in `sequential` (colors).
  *
- * La forme reste fixe pour préserver la perception d'ordre.
+ * The shape is fixed to preserve the perception of order.
  *
  * @example
  * ```ts
- * // 5 motifs lignes, contraste normal
+ * // 5 line patterns, normal contrast
  * sequentialPatterns(5);
  *
- * // 7 motifs cercles, contraste élevé, taille 2→20
+ * // 7 circle patterns, high contrast, size 2→20
  * sequentialPatterns(7, { shape: "circle", contrast: "high", sizeRange: [2, 20] });
  * ```
  */
@@ -114,18 +114,18 @@ export function sequentialPatterns(
     patchSize = true,
   }: SequentialPatternOptions = {}
 ): PatternParams[] {
-  // Bornes adaptatives : on récupère start/end (valeurs 0–100 du profil)
-  // puis on les normalise en facteur 0–1 pour interpoler dans sizeRange.
+  // Adaptive bounds: retrieve start/end (0–100 profile values)
+  // then normalize to a 0–1 factor for interpolating within sizeRange.
   const { start, end } = getAdaptiveBounds(count, contrast);
 
   return Array.from({ length: count }, (_, i) => {
-    // Facteur de progression linéaire (0 → 1)
+    // Linear progression factor (0 → 1)
     const t = count <= 1 ? 0 : i / (count - 1);
 
-    // Interpolation : start (grand %) → petite taille, end (petit %) → grande taille
-    // On normalise les bornes de contraste (0–100) en facteur (0–1)
+    // Interpolation: start (high %) → small size, end (low %) → large size
+    // Normalize contrast bounds (0–100) to a factor (0–1)
     const sizeFactor = (start + t * (end - start)) / 100;
-    // Inversion : start haut = clair = petit motif, end bas = sombre = grand motif
+    // Inversion: high start = light = small pattern, low end = dark = large pattern
     const size = lerp(sizeRange, 1 - sizeFactor);
 
     return {

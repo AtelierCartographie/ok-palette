@@ -53,22 +53,22 @@ export function divergent({
 }: DivergentPaletteOptions): CSSColor[] {
   const [leftSteps, rightSteps] = steps;
 
-  // startL = luminance du centre (clair), endL = luminance des extrêmes (sombre).
+  // startL = lightness of the center (light), endL = lightness of the extremes (dark).
   const { start: startL, end: endL } = getAdaptiveBounds(
     Math.max(leftSteps, rightSteps),
     contrast
   );
 
-  // Extrêmes normés à la luminance endL (sombre, saturé), sans imbrication
-  // de fonctions relatives pour rester compatible avec les moteurs CSS actuels.
+  // Extremes normalized to endL lightness (dark, saturated), avoiding nested
+  // relative functions to stay compatible with current CSS engines.
   const cssA = `oklch(from ${colorA} ${endL.toFixed(1)}% c h)`;
   const cssB = colorB
     ? `oklch(from ${colorB} ${endL.toFixed(1)}% c h)`
     : `oklch(from ${colorA} ${endL.toFixed(1)}% c calc(h + 180))`;
 
-  // Pivot teinté : on construit d'abord deux variantes claires (startL) avec
-  // chroma réduite, puis on prend leur milieu en OkLab.
-  // Objectif : éviter le "gris pur" abrupt tout en gardant un centre lisible.
+  // Tinted pivot: first build two light variants (startL) with reduced chroma,
+  // then take their OkLab midpoint.
+  // Goal: avoid an abrupt pure grey while keeping a readable center.
   const pivotA = `oklch(from ${colorA} ${startL.toFixed(1)}% calc(c / 8) h)`;
   const pivotB = colorB
     ? `oklch(from ${colorB} ${startL.toFixed(1)}% calc(c / 8) h)`
@@ -77,21 +77,21 @@ export function divergent({
 
   const palette: CSSColor[] = [];
 
-  // RAMPE GAUCHE : extrême A → pivot
-  // i=0 → 0% pivot = extrême A pur
-  // i=leftSteps-1 → (leftSteps-1)/leftSteps * 100% pivot → juste avant le pivot
+  // LEFT RAMP: extreme A → pivot
+  // i=0 → 0% pivot = pure extreme A
+  // i=leftSteps-1 → (leftSteps-1)/leftSteps * 100% pivot → just before the pivot
   for (let i = 0; i < leftSteps; i++) {
     const pctPivot = leftSteps === 1 ? 0 : (i / leftSteps) * 100;
     palette.push(`color-mix(in ${colorSpace}, ${cssPivot} ${pctPivot.toFixed(1)}%, ${cssA})`);
   }
 
-  // CLASSE CENTRALE (optionnelle)
+  // CENTER CLASS (optional)
   if (hasCenterClass) {
     palette.push(cssPivot);
   }
 
-  // RAMPE DROITE : pivot → extrême B
-  // Boucle inversée pour aller de la teinte proche du pivot vers l'extrême B.
+  // RIGHT RAMP: pivot → extreme B
+  // Reversed loop to go from the hue closest to the pivot toward extreme B.
   for (let i = rightSteps - 1; i >= 0; i--) {
     const pctPivot = rightSteps === 1 ? 0 : (i / rightSteps) * 100;
     palette.push(`color-mix(in ${colorSpace}, ${cssPivot} ${pctPivot.toFixed(1)}%, ${cssB})`);
@@ -101,24 +101,25 @@ export function divergent({
 }
 
 /**
- * Génère une palette divergente construite comme deux palettes séquentielles
- * miroir — une approche qui garantit une cohérence totale avec `sequential()`.
+ * Generates a diverging palette built as two mirrored sequential palettes —
+ * an approach that guarantees full consistency with `sequential()`.
  *
- * Chaque côté est exactement identique à `sequential({ colorStart, steps, contrast })`
- * en mode monochrome. La rampe gauche est inversée (sombre → clair) pour converger
- * vers le centre, la rampe droite est dans l'ordre naturel (clair → sombre).
+ * Each side is exactly identical to `sequential({ colorStart, steps, contrast })`
+ * in monochrome mode. The left ramp is reversed (dark → light) to converge
+ * toward the center; the right ramp is in natural order (light → dark).
  *
- * **Classe centrale** : Si `hasCenterClass` est `true`, une classe de transition
- * est insérée entre les deux rampes. Elle est calculée comme le mélange OkLab des
- * versions très désaturées (chroma/4) des deux couleurs, produisant un quasi-neutre
- * légèrement teinté — plus doux qu'un gris pur sans exiger un pivot explicite.
+ * **Center class**: If `hasCenterClass` is `true`, a transition class is
+ * inserted between the two ramps. It is computed as the OkLab blend of the
+ * highly-desaturated (chroma/4) light variants of both colors, producing a
+ * quasi-neutral, slightly tinted tone — softer than pure grey without
+ * requiring an explicit pivot.
  *
  * @example
  * ```ts
- * // Symétrique 3+3 — rigoureusement identique à deux `sequential` miroir
+ * // Symmetric 3+3 — rigorously identical to two mirrored `sequential` calls
  * divergentSequential({ colorA: "#3b4cc0" });
  *
- * // Asymétrique sans classe centrale
+ * // Asymmetric without center class
  * divergentSequential({ colorA: "#d7191c", colorB: "#2b83ba", steps: [5, 2], hasCenterClass: false });
  * ```
  */
@@ -131,27 +132,27 @@ export function divergentSequential({
 }: Omit<DivergentPaletteOptions, "colorSpace">): CSSColor[] {
   const [leftSteps, rightSteps] = steps;
 
-  // Résolution de colorB : complémentaire CSS pur si non fournie.
-  // Note : la syntaxe `oklch(from … l c calc(h + 180))` est une couleur relative
-  // valide que sequential() peut accepter comme colorStart.
+  // Resolve colorB: pure CSS complement if not provided.
+  // Note: the `oklch(from … l c calc(h + 180))` syntax is a valid relative color
+  // that sequential() can accept as colorStart.
   const baseB = colorB ?? `oklch(from ${colorA} l c calc(h + 180))`;
 
-  // RAMPE GAUCHE : sequential monochrome de colorA, inversé (sombre → clair).
-  // Le résultat est rigoureusement identique à sequential({ colorStart: colorA }).
+  // LEFT RAMP: monochrome sequential of colorA, reversed (dark → light).
+  // The result is rigorously identical to sequential({ colorStart: colorA }).
   const leftRamp = sequential({ colorStart: colorA, steps: leftSteps, contrast }).reverse();
 
-  // RAMPE DROITE : sequential monochrome de colorB (clair → sombre).
+  // RIGHT RAMP: monochrome sequential of colorB (light → dark).
   const rightRamp = sequential({ colorStart: baseB, steps: rightSteps, contrast });
 
   if (!hasCenterClass) {
     return [...leftRamp, ...rightRamp];
   }
 
-  // CLASSE CENTRALE : mélange OkLab des variantes très claires et très désaturées
-  // (chroma/4) de A et B. Les getAdaptiveBounds respectifs donnent la luminance
-  // utilisée par chaque ramp pour sa classe la plus claire.
-  // Avec chroma/4 (au lieu de chroma/2 dans sequential), le centre est perceptiblement
-  // plus neutre que les premières classes des rampes, sans être un gris pur.
+  // CENTER CLASS: OkLab blend of the very light, very desaturated (chroma/4)
+  // variants of A and B. The respective getAdaptiveBounds give the lightness
+  // used by each ramp for its lightest class.
+  // With chroma/4 (instead of chroma/2 in sequential), the center is perceptibly
+  // more neutral than the first classes of the ramps, without being a pure grey.
   const { start: startL_left } = getAdaptiveBounds(leftSteps, contrast);
   const { start: startL_right } = getAdaptiveBounds(rightSteps, contrast);
 
