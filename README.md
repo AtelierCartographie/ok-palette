@@ -209,16 +209,17 @@ This approach is non iterative. Performance is independent of class count and ve
 
 Generates categorical pattern parameters compatible with [@ateliercartographie/motif.js](https://github.com/AtelierCartographie/motif.js).
 
-| Option       | Type               | Default                                   | Description             |
-| ------------ | ------------------ | ----------------------------------------- | ----------------------- |
-| `shapes`     | `string[]`         | `["line", "circle", "plaid", "triangle"]` | Shapes to cycle through |
-| `angleRange` | `[number, number]` | `[0, 180]`                                | Angle range (degrees)   |
-| `scaleRange` | `[number, number]` | `[2, 8]`                                  | Scale range             |
-| `size`       | `number`           | `10`                                      | Fixed size              |
-| `fill`       | `string`           | `"#ffffff"`                               | Fill color              |
-| `background` | `string`           | `"transparent"`                           | Background color        |
-| `patchSize`  | `boolean`          | `true`                                    | Enable patchSize        |
-| `vdcOffset`  | `number`           | `0`                                       | Van der Corput offset   |
+| Option       | Type                                 | Default                                   | Description                                  |
+| ------------ | ------------------------------------ | ----------------------------------------- | -------------------------------------------- |
+| `shapes`     | `string[]`                           | `["line", "circle", "plaid", "triangle"]` | Shapes to cycle through                      |
+| `angleRange` | `[number, number]`                   | `[0, 180]`                                | Angle range (degrees)                        |
+| `scaleRange` | `[number, number]`                   | `[2, 8]`                                  | Scale range                                  |
+| `size`       | `number`                             | `10`                                      | Fixed size                                   |
+| `fill`       | `string`                             | `"#000000"`                               | Fill color                                   |
+| `background` | `string`                             | `"#ffffff"`                               | Background color                             |
+| `patchSize`  | `boolean`                            | `true`                                    | Enable patchSize                             |
+| `vdcOffset`  | `number`                             | `0`                                       | Van der Corput offset                        |
+| `colorize`   | `boolean \| CategoricalColorOptions` | `false`                                   | Auto-colorize pattern fill via `categorical` |
 
 **Returns** `PatternParams[]`
 
@@ -238,16 +239,16 @@ Pattern **size** increases monotonically across classes, analogous to the lightn
 
 The shape is fixed to preserve the perception of order.
 
-| Option       | Type                          | Default         | Description               |
-| ------------ | ----------------------------- | --------------- | ------------------------- |
-| `shape`      | `string`                      | `"line"`        | Pattern shape             |
-| `sizeRange`  | `[number, number]`            | `[4, 14]`       | Size range [small, large] |
-| `angle`      | `number`                      | `45`            | Fixed angle (degrees)     |
-| `scale`      | `number`                      | `4`             | Fixed scale               |
-| `contrast`   | `"low" \| "normal" \| "high"` | `"normal"`      | Contrast profile          |
-| `fill`       | `string`                      | `"#ffffff"`     | Fill color                |
-| `background` | `string`                      | `"transparent"` | Background color          |
-| `patchSize`  | `boolean`                     | `true`          | Enable patchSize          |
+| Option       | Type                          | Default     | Description               |
+| ------------ | ----------------------------- | ----------- | ------------------------- |
+| `shape`      | `string`                      | `"line"`    | Pattern shape             |
+| `sizeRange`  | `[number, number]`            | `[4, 14]`   | Size range [small, large] |
+| `angle`      | `number`                      | `45`        | Fixed angle (degrees)     |
+| `scale`      | `number`                      | `4`         | Fixed scale               |
+| `contrast`   | `"low" \| "normal" \| "high"` | `"normal"`  | Contrast profile          |
+| `fill`       | `string`                      | `"#000000"` | Fill color                |
+| `background` | `string`                      | `"#ffffff"` | Background color          |
+| `patchSize`  | `boolean`                     | `true`      | Enable patchSize          |
 
 **Returns** `PatternParams[]`
 
