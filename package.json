@@ -1,6 +1,6 @@
 {
   "name": "@ateliercartographie/ok-palette",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Générateur de palettes de couleurs séquentielles, divergentes et catégorielles pour la dataviz et la cartographie",
   "type": "module",
   "main": "./dist/ok-palette.cjs",
