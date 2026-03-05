@@ -1,6 +1,6 @@
 # @ateliercartographie/ok-palette
 
-Générateur de palettes de couleurs **séquentielles, divergentes et catégorielles** pour la **dataviz** et la **cartographie**. Génère aussi des **palettes de motifs** compatibles avec [@ateliercartographie/motif.js](https://github.com/AtelierCartographie/motif.js).
+Color palette generator for **sequential, diverging, and categorical** schemes for **data visualization** and **cartography**. Also generates **pattern palettes** compatible with [@ateliercartographie/motif.js](https://github.com/AtelierCartographie/motif.js).
 
 Zero dependencies. Relies entirely on modern browser CSS capabilities (`oklch`, `color-mix()`) to guarantee perceptually uniform results.
 
@@ -40,7 +40,7 @@ const biTone = sequential({
   contrast: "high",
 });
 
-// Symmetric diverging palette (3+1+3 classes)
+// Symmetric diverging palette (3+3 classes)
 const div = divergent({ colorA: "#3b4cc0" });
 
 // Asymmetric diverging palette, oklch interpolation
@@ -110,7 +110,7 @@ Generates a diverging (bipolar) palette around a tinted pivot.
 | `colorB`         | `string?`                     | complement of `colorA` | Right-extreme CSS color          |
 | `steps`          | `[number, number]`            | `[3, 3]`               | Classes per side `[left, right]` |
 | `contrast`       | `"low" \| "normal" \| "high"` | `"normal"`             | Contrast profile                 |
-| `hasCenterClass` | `boolean`                     | `true`                 | Add a neutral center class       |
+| `hasCenterClass` | `boolean`                     | `false`                | Add a neutral center class       |
 | `colorSpace`     | `"oklab" \| "oklch"`          | `"oklab"`              | Ramp interpolation color space   |
 
 **Returns** `string[]` — CSS colors.
@@ -123,7 +123,7 @@ Both extremes converge toward an automatically derived **tinted pivot**: the OkL
 - `colorSpace: "oklch"`: circular path on the hue wheel — more saturated at the center
 
 ```ts
-// Default symmetric palette (7 classes: 3 + pivot + 3)
+// Default symmetric palette (7 classes: 3 + 3)
 divergent({ colorA: "#3b4cc0" });
 
 // Asymmetric, high contrast, oklch interpolation
@@ -135,8 +135,8 @@ divergent({
   colorSpace: "oklch",
 });
 
-// Even count without center class (6 classes)
-divergent({ colorA: "steelblue", steps: [3, 3], hasCenterClass: false });
+// With a center class (3 + 1 + 3 classes)
+divergent({ colorA: "steelblue", steps: [3, 3], hasCenterClass: true });
 ```
 
 ### `divergentSequential(options)`
@@ -151,7 +151,7 @@ Accepts the same options as `divergent()` **except** `colorSpace` (interpolation
 | `colorB`         | `string?`                     | complement | Right-extreme color        |
 | `steps`          | `[number, number]`            | `[3, 3]`   | Classes per side           |
 | `contrast`       | `"low" \| "normal" \| "high"` | `"normal"` | Contrast profile           |
-| `hasCenterClass` | `boolean`                     | `true`     | Add a neutral center class |
+| `hasCenterClass` | `boolean`                     | `false`    | Add a neutral center class |
 
 **Returns** `string[]` — CSS colors.
 
@@ -159,12 +159,12 @@ Accepts the same options as `divergent()` **except** `colorSpace` (interpolation
 // Rigorously identical to two mirrored `sequential` calls
 divergentSequential({ colorA: "#3b4cc0" });
 
-// Asymmetric without center class
+// Asymmetric with a center class
 divergentSequential({
   colorA: "#d7191c",
   colorB: "#2b83ba",
   steps: [5, 2],
-  hasCenterClass: false,
+  hasCenterClass: true,
 });
 ```
 
@@ -203,7 +203,7 @@ Combining: `categorical(8, { ...presets.vif, ...temperature.chaude })`
 
 Hue distribution relies on the [Van der Corput sequence](https://en.wikipedia.org/wiki/Van_der_Corput_sequence) in base 2. It always fills the largest gap on the hue wheel, guaranteeing maximum distance between colors regardless of count.
 
-Performance: 10 000 colors in ~4 ms.
+This approach is non iterative. Performance is independent of class count and very fast (~4ms in modern browsers).
 
 ### `categoricalPatterns(count, options?)`
 
@@ -221,6 +221,14 @@ Generates categorical pattern parameters compatible with [@ateliercartographie/m
 | `vdcOffset`  | `number`           | `0`                                       | Van der Corput offset   |
 
 **Returns** `PatternParams[]`
+
+#### How it works
+
+Pattern variation combines three complementary mechanisms so classes stay distinct without looking purely random:
+
+- **Shape**: forms are assigned by cycling through `shapes` (`i % shapes.length`) to guarantee balanced reuse when `count` exceeds the shape list.
+- **Scale**: values oscillate between `scaleRange[0]` and `scaleRange[1]` (triangle-wave style), creating contrast while avoiding monotonic growth that could suggest an ordered scale.
+- **Angle**: orientation is sampled with the Van der Corput sequence, but independently **within each shape group**. In practice, each shape gets its own low-discrepancy angle stream, which spreads angles evenly and prevents two identical shapes from clustering around similar directions.
 
 ### `sequentialPatterns(count, options?)`
 
@@ -249,6 +257,12 @@ Resolves a complex CSS color (`color-mix(…)`, `oklch(from …)`, etc.) to a us
 
 - `{ format: "css" }` (default) → `string` as computed by the browser
 - `{ format: "webgl" }` → `[r, g, b, a]` (0–255)
+
+#### How it works
+
+`resolveColor` delegates parsing and evaluation to the browser color engine: the input is applied to a temporary element/canvas context, then read back as a computed color.
+
+This ensures full support for modern CSS color syntax (`oklch`, relative colors, `color-mix()`) without external dependencies and with behavior aligned to real rendering engines. The function then normalizes the result either as a CSS color string (`css`) or as a WebGL-ready numeric tuple (`webgl`).
 
 ### `resolvePalette(colors, options?)`
 

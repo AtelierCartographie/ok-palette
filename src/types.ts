@@ -57,7 +57,7 @@ export interface DivergentPaletteOptions {
   steps?: [number, number];
   /** Contrast profile (default: "normal") */
   contrast?: ContrastMode;
-  /** Add a neutral center class (default: true) */
+  /** Add a neutral center class (default: false) */
   hasCenterClass?: boolean;
   /**
    * Color space for interpolating each ramp (default: "oklab").

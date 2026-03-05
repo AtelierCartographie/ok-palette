@@ -48,7 +48,7 @@ export function divergent({
   colorB,
   steps = [3, 3],
   contrast = "normal",
-  hasCenterClass = true,
+  hasCenterClass = false,
   colorSpace = "oklab",
 }: DivergentPaletteOptions): CSSColor[] {
   const [leftSteps, rightSteps] = steps;
@@ -128,7 +128,7 @@ export function divergentSequential({
   colorB,
   steps = [3, 3],
   contrast = "normal",
-  hasCenterClass = true,
+  hasCenterClass = false,
 }: Omit<DivergentPaletteOptions, "colorSpace">): CSSColor[] {
   const [leftSteps, rightSteps] = steps;
 
