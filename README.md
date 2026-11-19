@@ -179,31 +179,42 @@ Generates a categorical color palette.
 | `chromaRange`    | `[number, number]` | `[0.15, 0.25]` | Oklch chroma range                 |
 | `lightnessRange` | `[number, number]` | `[0.5, 0.75]`  | Oklch lightness range, values 0–1  |
 
-**Returns** `string[]` — CSS colors `oklch(…)`.
+**Returns** `string[]` — CSS colors `oklch(…)`, all inside the sRGB gamut.
 
 #### Presets
 
 ```ts
-presets.vif; // Saturated, vivid colors
-presets.pastel; // Soft, light colors
-presets.sepia; // Warm, desaturated tones
+presets.vif; // Saturated, vivid colors      — L 0.55–0.8,  C 0.15–0.22
+presets.pastel; // Soft, light colors        — L 0.78–0.93, C 0.05–0.12
+presets.sepia; // Warm, desaturated tones    — L 0.4–0.92,  C 0.03–0.08, hues 25°–85°
 ```
 
 #### Temperature filters
 
 ```ts
 temperature.mixte; // Full hue wheel
-temperature.chaude; // Reds, oranges, yellows
-temperature.froide; // Greens, blues, purples
+temperature.chaude; // Pinks, reds, oranges, golden yellows (330° → 450°)
+temperature.froide; // Greens, cyans, blues, violets (140° → 300°)
 ```
 
 Combining: `categorical(8, { ...presets.vif, ...temperature.chaude })`
 
-#### Van der Corput sequence
+#### How it works
 
-Hue distribution relies on the [Van der Corput sequence](https://en.wikipedia.org/wiki/Van_der_Corput_sequence) in base 2. It always fills the largest gap on the hue wheel, guaranteeing maximum distance between colors regardless of count.
+- **Hue** — distributed with the [Van der Corput sequence](https://en.wikipedia.org/wiki/Van_der_Corput_sequence) in base 2: the largest gap of the hue range is always filled next. A partial range of 270° or less (e.g. a temperature filter) is treated as an arc: its two ends are used by the first two colors, then the gaps are filled.
+- **Lightness and chroma** — for each new color, 11 lightness levels of `lightnessRange` are tried (chroma follows the inverse level in `chromaRange`: light colors are less saturated). The level kept is the one farthest, in ΔE OK, from the colors already placed, weighted by the share of chroma the hue keeps inside sRGB (so yellows stay light and blues dark instead of turning olive or greyish).
+- **Gamut** — chroma is capped to the maximum reachable in sRGB for that lightness and hue. The browser never has to clip the colors, so the lightness and chroma displayed are the ones computed.
+- **Stability** — each color only depends on the previous ones: adding a class never changes the colors already generated.
 
-This approach is non iterative. Performance is independent of class count and very fast (~4ms in modern browsers).
+The computation is deterministic and fast (≈ 0.3 ms for 16 colors in Node).
+
+#### Limits
+
+Low-chroma presets have little room to separate many classes. Measured minimal ΔE OK between two colors (sRGB, 2 to 16 classes): `vif` ≥ 0.09, `pastel` ≥ 0.05, `pastel` + `chaude` / `froide` ≥ 0.034, `sepia` ≥ 0.05 up to 12 classes (0.029 at 15). Below ≈ 0.05, neighboring areas on a map can be confused; prefer `vif`, or combine colors with patterns (`categoricalPatterns`).
+
+#### Diagnostic
+
+`pnpm diagnose:categorical` (Node ≥ 22.18, no dependency) prints, for every preset × temperature and 2 to 16 classes, the number of out-of-gamut colors and the minimal ΔE OK. Options: `--max 24`, `--detail sepia,chaude,8` (colors of one palette), `--json`. See [`scripts/diagnose-categorical.ts`](scripts/diagnose-categorical.ts).
 
 ### `categoricalPatterns(count, options?)`
 
@@ -283,7 +294,7 @@ A sequential palette only works if the lightness gap between the first and last 
 
 - **Universal**: normalizes any CSS color before generating the palette
 - **Modern**: zero dependencies, relies on native `oklch` and `color-mix()`
-- **Performant**: the Van der Corput sequence generates categorical palettes in constant time, unlike iterative approaches like I Want Hue
+- **Performant**: categorical palettes are built in a single deterministic pass (Van der Corput hues, best of 11 lightness levels per color), unlike iterative approaches like I Want Hue
 
 ## Development
 
@@ -293,6 +304,9 @@ pnpm dev
 
 # Build the library
 pnpm build
+
+# Measure categorical palettes (gamut, minimal ΔE OK)
+pnpm diagnose:categorical
 ```
 
 ## License
