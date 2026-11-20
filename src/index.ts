@@ -21,6 +21,7 @@ export { CONTRAST_PROFILES, vanDerCorput, getAdaptiveBounds } from "./utils";
 export type {
   ContrastMode,
   ColorFormat,
+  Gamut,
   CSSColor,
   WebGLColor,
   Range,

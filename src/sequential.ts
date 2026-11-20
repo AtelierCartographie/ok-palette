@@ -1,5 +1,18 @@
-import type { CSSColor, SequentialPaletteOptions } from "./types";
+import type { ContrastMode, CSSColor, SequentialPaletteOptions } from "./types";
+import { formatOklch, mixOklch, oklabToOklch, type Oklch } from "./oklab";
+import { readColor } from "./parse";
 import { getAdaptiveBounds } from "./utils";
+
+/**
+ * Chroma divisor of the light (start) color, per contrast profile,
+ * to avoid a fluorescent effect.
+ * - low : c / 1.5 (less aggressive)
+ * - normal : c / 2.5 (balanced)
+ * - high : c / 3.5 (more neutral)
+ */
+function chromaFactor(contrast: ContrastMode): number {
+  return contrast === "low" ? 1.5 : contrast === "high" ? 3.5 : 2.5;
+}
 
 /**
  * Generates a sequential palette (monochrome or two-tone).
@@ -9,8 +22,13 @@ import { getAdaptiveBounds } from "./utils";
  * The lightness range is automatically adapted to the number of classes
  * via the chosen contrast profile.
  *
- * Interpolation relies entirely on `color-mix(in oklch, …)`:
- * no external dependency is needed — the browser does the computation.
+ * With `gamut: "srgb"` (default) or `"p3"`, colors are computed in JS (same
+ * interpolation as the CSS version) and returned as `oklch()` whose chroma is
+ * capped, class by class, to the maximum of the target gamut for that
+ * lightness and hue (lightness and hue are kept). With `gamut: "none"`, the
+ * palette is pure CSS (`color-mix(in oklch, …)`), computed by the browser.
+ * If an input color cannot be read in JS (e.g. `var(--x)` outside a browser),
+ * the pure CSS palette is returned.
  *
  * @example
  * ```ts
@@ -19,6 +37,9 @@ import { getAdaptiveBounds } from "./utils";
  *
  * // 7-class two-tone palette, high contrast
  * sequential({ colorStart: "#f4e285", colorEnd: "#1d3557", steps: 7, contrast: "high" });
+ *
+ * // Display P3 screens
+ * sequential({ colorStart: "oklch(52.4% 0.158 252.3)", gamut: "p3" });
  * ```
  */
 export function sequential({
@@ -26,22 +47,56 @@ export function sequential({
   colorEnd,
   steps = 5,
   contrast = "normal",
+  gamut = "srgb",
 }: SequentialPaletteOptions): CSSColor[] {
-  // Mono or two-tone: if no end color provided, reuse the start color
-  const endColor = colorEnd ?? colorStart;
+  if (gamut !== "none") {
+    const start = readColor(colorStart);
+    const end = colorEnd === undefined ? start : readColor(colorEnd);
+    if (start && end) {
+      return sequentialOklch(oklabToOklch(start), oklabToOklch(end), steps, contrast).map(
+        (color) => formatOklch(color, gamut)
+      );
+    }
+  }
+  return sequentialCss(colorStart, colorEnd ?? colorStart, steps, contrast);
+}
 
+/**
+ * Sequential palette as OKLCH numbers: JS equivalent of the CSS version
+ * (what the browser computes for `gamut: "none"`). Gamut mapping is applied
+ * afterwards, class by class (see `formatOklch`): capping the anchors before
+ * interpolating would needlessly dull the mid tones.
+ *
+ * @internal
+ */
+export function sequentialOklch(
+  start: Oklch,
+  end: Oklch,
+  steps: number,
+  contrast: ContrastMode
+): Oklch[] {
+  const { start: startL, end: endL } = getAdaptiveBounds(steps, contrast);
+  const light: Oklch = [startL / 100, start[1] / chromaFactor(contrast), start[2]];
+  const dark: Oklch = [endL / 100, end[1], end[2]];
+
+  return Array.from({ length: steps }, (_, i) =>
+    mixOklch(light, dark, steps === 1 ? 0 : i / (steps - 1))
+  );
+}
+
+/** Pure CSS sequential palette (`gamut: "none"`) */
+function sequentialCss(
+  colorStart: string,
+  endColor: string,
+  steps: number,
+  contrast: ContrastMode
+): CSSColor[] {
   const { start: startL, end: endL } = getAdaptiveBounds(steps, contrast);
 
-  // Normalize the start color (light):
-  // reduce chroma according to the contrast profile to avoid a fluorescent effect.
-  // - low : c / 1.5 (less aggressive)
-  // - normal : c / 2.5 (balanced)
-  // - high : c / 3.5 (more neutral)
-  const chromaFactor = contrast === "low" ? 1.5 : contrast === "high" ? 3.5 : 2.5;
-  const cssStart = `oklch(from ${colorStart} ${startL.toFixed(1)}% calc(c / ${chromaFactor}) h)`;
+  // Normalize the start color (light): reduce chroma per contrast profile.
+  const cssStart = `oklch(from ${colorStart} ${startL.toFixed(1)}% calc(c / ${chromaFactor(contrast)}) h)`;
 
-  // Normalize the end color (dark):
-  // preserve the original chroma.
+  // Normalize the end color (dark): preserve the original chroma.
   const cssEnd = `oklch(from ${endColor} ${endL.toFixed(1)}% c h)`;
 
   const palette: CSSColor[] = [];

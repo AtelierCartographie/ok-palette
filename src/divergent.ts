@@ -1,6 +1,29 @@
-import type { CSSColor, DivergentPaletteOptions } from "./types";
+import type {
+  ContrastMode,
+  CSSColor,
+  DivergentColorSpace,
+  DivergentPaletteOptions,
+} from "./types";
+import {
+  CONVERTED_HUE_CHROMA_THRESHOLD,
+  formatOklch,
+  mixOklab,
+  mixOklch,
+  oklabToOklch,
+  type Oklch,
+} from "./oklab";
+import { readColor } from "./parse";
 import { getAdaptiveBounds } from "./utils";
-import { sequential } from "./sequential";
+import { sequential, sequentialOklch } from "./sequential";
+
+/** Reads the two colors of a divergent palette (B: complement of A if omitted) */
+function readPair(colorA: string, colorB?: string): [Oklch, Oklch, boolean] | null {
+  const a = readColor(colorA);
+  const b = colorB === undefined ? null : readColor(colorB);
+  if (!a || (colorB !== undefined && !b)) return null;
+  const A = oklabToOklch(a);
+  return [A, b ? oklabToOklch(b) : [A[0], A[1], (A[2] + 180) % 360], b !== null];
+}
 
 /**
  * Génère une palette divergente (bi-polaire) autour d'un pivot teinté.
@@ -31,6 +54,12 @@ import { sequential } from "./sequential";
  *    interpole en OkLab (trajectoire cartésienne, plus douce, évite les teintes
  *    parasites) ou en OkLCH (trajectoire circulaire sur la roue des teintes).
  *
+ * 6. **Gamut** : avec `gamut: "srgb"` (défaut) ou `"p3"`, les couleurs sont
+ *    calculées en JS (mêmes interpolations que la version CSS) et renvoyées en
+ *    `oklch()`, chroma de chaque classe bornée au maximum du gamut visé pour
+ *    sa luminosité et sa teinte. Avec `gamut: "none"`, la palette est en CSS pur (`color-mix()`).
+ *    Si une couleur ne peut pas être lue en JS, la palette CSS pure est renvoyée.
+ *
  * @example
  * ```ts
  * // Palette symétrique par défaut (OkLab, 3+3 classes)
@@ -50,7 +79,17 @@ export function divergent({
   contrast = "normal",
   hasCenterClass = false,
   colorSpace = "oklab",
+  gamut = "srgb",
 }: DivergentPaletteOptions): CSSColor[] {
+  if (gamut !== "none") {
+    const pair = readPair(colorA, colorB);
+    if (pair) {
+      return divergentOklch(pair[0], pair[1], steps, contrast, hasCenterClass, colorSpace).map(
+        (color) => formatOklch(color, gamut)
+      );
+    }
+  }
+
   const [leftSteps, rightSteps] = steps;
 
   // startL = lightness of the center (light), endL = lightness of the extremes (dark).
@@ -101,6 +140,49 @@ export function divergent({
 }
 
 /**
+ * Divergent palette as OKLCH numbers: JS equivalent of the CSS version (what
+ * the browser computes for `gamut: "none"`). Gamut mapping is applied
+ * afterwards, class by class.
+ *
+ * @internal
+ */
+export function divergentOklch(
+  A: Oklch,
+  B: Oklch,
+  [leftSteps, rightSteps]: [number, number],
+  contrast: ContrastMode,
+  hasCenterClass: boolean,
+  colorSpace: DivergentColorSpace
+): Oklch[] {
+  const { start, end } = getAdaptiveBounds(Math.max(leftSteps, rightSteps), contrast);
+  const [startL, endL] = [start / 100, end / 100];
+
+  const extremeA: Oklch = [endL, A[1], A[2]];
+  const extremeB: Oklch = [endL, B[1], B[2]];
+  const pivot = mixOklab([startL, A[1] / 8, A[2]], [startL, B[1] / 8, B[2]], 0.5);
+
+  // In OKLCH, a quasi-neutral pivot has no meaningful hue: like browsers do
+  // for the CSS version, its hue is treated as missing, so each ramp keeps the
+  // hue of its extreme instead of sweeping through unrelated hues.
+  const mix = colorSpace === "oklch" ? mixOklch : mixOklab;
+  const pivotForMix: Oklch =
+    colorSpace === "oklch" && pivot[1] <= CONVERTED_HUE_CHROMA_THRESHOLD
+      ? [pivot[0], pivot[1], NaN]
+      : pivot;
+  const palette: Oklch[] = [];
+
+  for (let i = 0; i < leftSteps; i++) {
+    palette.push(mix(extremeA, pivotForMix, leftSteps === 1 ? 0 : i / leftSteps));
+  }
+  if (hasCenterClass) palette.push(pivot);
+  for (let i = rightSteps - 1; i >= 0; i--) {
+    palette.push(mix(extremeB, pivotForMix, rightSteps === 1 ? 0 : i / rightSteps));
+  }
+
+  return palette;
+}
+
+/**
  * Generates a diverging palette built as two mirrored sequential palettes —
  * an approach that guarantees full consistency with `sequential()`.
  *
@@ -113,6 +195,8 @@ export function divergent({
  * highly-desaturated (chroma/4) light variants of both colors, producing a
  * quasi-neutral, slightly tinted tone — softer than pure grey without
  * requiring an explicit pivot.
+ *
+ * **Gamut**: same behavior as `sequential()` (`gamut`, default `"srgb"`).
  *
  * @example
  * ```ts
@@ -129,7 +213,17 @@ export function divergentSequential({
   steps = [3, 3],
   contrast = "normal",
   hasCenterClass = false,
+  gamut = "srgb",
 }: Omit<DivergentPaletteOptions, "colorSpace">): CSSColor[] {
+  if (gamut !== "none") {
+    const pair = readPair(colorA, colorB);
+    if (pair) {
+      return divergentSequentialOklch(pair[0], pair[1], steps, contrast, hasCenterClass).map(
+        (color) => formatOklch(color, gamut)
+      );
+    }
+  }
+
   const [leftSteps, rightSteps] = steps;
 
   // Resolve colorB: pure CSS complement if not provided.
@@ -139,10 +233,10 @@ export function divergentSequential({
 
   // LEFT RAMP: monochrome sequential of colorA, reversed (dark → light).
   // The result is rigorously identical to sequential({ colorStart: colorA }).
-  const leftRamp = sequential({ colorStart: colorA, steps: leftSteps, contrast }).reverse();
+  const leftRamp = sequential({ colorStart: colorA, steps: leftSteps, contrast, gamut: "none" }).reverse();
 
   // RIGHT RAMP: monochrome sequential of colorB (light → dark).
-  const rightRamp = sequential({ colorStart: baseB, steps: rightSteps, contrast });
+  const rightRamp = sequential({ colorStart: baseB, steps: rightSteps, contrast, gamut: "none" });
 
   if (!hasCenterClass) {
     return [...leftRamp, ...rightRamp];
@@ -164,4 +258,28 @@ export function divergentSequential({
   const centerClass = `color-mix(in oklab, ${lightA}, ${lightB} 50%)`;
 
   return [...leftRamp, centerClass, ...rightRamp];
+}
+
+/**
+ * Divergent-sequential palette as OKLCH numbers: JS equivalent of the CSS
+ * version (what the browser computes for `gamut: "none"`). Gamut mapping is
+ * applied afterwards, class by class.
+ *
+ * @internal
+ */
+export function divergentSequentialOklch(
+  A: Oklch,
+  B: Oklch,
+  [leftSteps, rightSteps]: [number, number],
+  contrast: ContrastMode,
+  hasCenterClass: boolean
+): Oklch[] {
+  const leftRamp = sequentialOklch(A, A, leftSteps, contrast).reverse();
+  const rightRamp = sequentialOklch(B, B, rightSteps, contrast);
+  if (!hasCenterClass) return [...leftRamp, ...rightRamp];
+
+  const { start: startLeft } = getAdaptiveBounds(leftSteps, contrast);
+  const { start: startRight } = getAdaptiveBounds(rightSteps, contrast);
+  const center = mixOklab([startLeft / 100, 0.02, A[2]], [startRight / 100, 0.02, B[2]], 0.5);
+  return [...leftRamp, center, ...rightRamp];
 }
