@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-20
+
 ### Changed
 
 - **Gamut** — `sequential()`, `divergent()` et `divergentSequential()` renvoient désormais par défaut des `oklch(L C H)` calculés en JS, dont la chroma est bornée classe par classe au maximum du gamut sRGB (`gamut: "srgb"`). Auparavant, ces fonctions renvoyaient du CSS (`color-mix()`, couleurs relatives) dont une partie des classes sortait du gamut sRGB et était écrêtée par le navigateur (52 % des classes séquentielles et 22 % des classes divergentes du jeu d'essai). Les classes qui étaient dans le gamut gardent le même rendu ; les autres perdent un peu de chroma, à luminosité et teinte égales. `gamut: "none"` rétablit la sortie CSS d'avant.
