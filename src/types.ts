@@ -5,6 +5,18 @@
 /** Contrast profile for sequential palettes */
 export type ContrastMode = "low" | "normal" | "high";
 
+/**
+ * Target gamut of the generated colors.
+ *
+ * - `"srgb"`: every color fits the sRGB gamut (all screens). Chroma is
+ *   computed in JS and capped per class.
+ * - `"p3"`: every color fits the Display P3 gamut (recent Mac, iPhone and
+ *   most recent laptop screens). sRGB screens clip what exceeds sRGB.
+ * - `"none"`: no gamut mapping. Sequential and divergent palettes are pure
+ *   CSS (`color-mix()`, relative colors), computed by the browser.
+ */
+export type Gamut = "srgb" | "p3" | "none";
+
 /** Output format for color resolution */
 export type ColorFormat = "css" | "webgl";
 
@@ -42,6 +54,8 @@ export interface SequentialPaletteOptions {
   steps?: number;
   /** Contrast profile (default: "normal") */
   contrast?: ContrastMode;
+  /** Target gamut (default: "srgb") */
+  gamut?: Gamut;
 }
 
 /** Interpolation color space for divergent palettes */
@@ -65,6 +79,8 @@ export interface DivergentPaletteOptions {
    * - "oklch": Circular path on the hue wheel — more saturated at the center
    */
   colorSpace?: DivergentColorSpace;
+  /** Target gamut (default: "srgb") */
+  gamut?: Gamut;
 }
 
 // ---------------------------------------------------------------------------
@@ -88,6 +104,8 @@ export interface CategoricalColorOptions {
   chromaRange?: Range;
   /** Oklch lightness range, values 0–1 (default: [0.5, 0.75]) */
   lightnessRange?: Range;
+  /** Target gamut (default: "srgb") */
+  gamut?: Gamut;
 }
 
 /** Predefined categorical color presets */

@@ -4,10 +4,14 @@
  * Pour chaque préréglage (`presets`) combiné à chaque filtre de température
  * (`temperature`), et pour 2 à 16 classes, le script mesure :
  *
- * - le nombre de couleurs hors du gamut sRGB (le navigateur les écrête,
- *   la luminosité et la chroma affichées ne sont donc plus celles visées) ;
+ * - le nombre de couleurs hors du gamut de l'écran (sRGB par défaut ; le
+ *   navigateur les écrête, la luminosité et la chroma affichées ne sont donc
+ *   plus celles visées) ;
  * - le ΔE OK minimal entre deux couleurs de la palette, calculé sur les couleurs
- *   réellement affichées (écrêtage par canal sRGB, comme le font les navigateurs).
+ *   réellement affichées (écrêtage par canal, comme le font les navigateurs).
+ *
+ * `--gamut srgb|p3|none` choisit l'option `gamut` passée à `categorical()`.
+ * L'écran simulé est P3 pour `--gamut p3`, sRGB sinon.
  *
  * Repères : ΔE OK < 0,02 ≈ couleurs indiscernables ; < 0,05 ≈ risque de confusion
  * sur une carte (petites surfaces, voisinage).
@@ -19,27 +23,14 @@
  *   node scripts/diagnose-categorical.ts --detail sepia  # couleurs d'un préréglage (8 classes)
  *   node scripts/diagnose-categorical.ts --detail vif,chaude,12
  *   node scripts/diagnose-categorical.ts --json          # sortie JSON
+ *   node scripts/diagnose-categorical.ts --gamut p3      # palettes en gamut P3, mesurées sur écran P3
+ *   node scripts/diagnose-categorical.ts --gamut none    # sans bornage de la chroma
  *
  * Le script importe directement les sources TypeScript de `src/` : il mesure
  * donc toujours le code de la copie de travail.
  */
 
-import { registerHooks } from "node:module";
-
-// Les sources importent leurs modules sans extension ("./utils") : on ajoute
-// ".ts" à la résolution pour que Node puisse les charger directement.
-registerHooks({
-  resolve(specifier, context, nextResolve) {
-    if (specifier.startsWith(".") && !/\.[cm]?[jt]s$/.test(specifier)) {
-      try {
-        return nextResolve(`${specifier}.ts`, context);
-      } catch {
-        // on retombe sur la résolution par défaut
-      }
-    }
-    return nextResolve(specifier, context);
-  },
-});
+import "./register-ts.ts";
 
 const { categorical } = await import("../src/categorical.ts");
 const { presets, temperature } = await import("../src/presets.ts");
@@ -63,6 +54,10 @@ const minCount = Number(argValue("--min") ?? 2);
 const maxCount = Number(argValue("--max") ?? 16);
 const asJson = args.includes("--json");
 const detail = argValue("--detail");
+const gamut = (argValue("--gamut") ?? "srgb") as "srgb" | "p3" | "none";
+/** Gamut of the simulated screen */
+const screen = gamut === "p3" ? "p3" : "srgb";
+const screenLabel = screen === "p3" ? "Display P3" : "sRGB";
 
 // ---------------------------------------------------------------------------
 // Mesures
@@ -91,8 +86,8 @@ interface PaletteReport {
 
 function measure(palette: string[]): PaletteReport {
   const colors = palette.map(parseOklch);
-  const displayed = colors.map(({ l, c, h }) => oklchToDisplayedOklab(l, c, h));
-  const outOfGamut = colors.flatMap(({ l, c, h }, i) => (isOklchInGamut(l, c, h) ? [] : [i]));
+  const displayed = colors.map(({ l, c, h }) => oklchToDisplayedOklab(l, c, h, screen));
+  const outOfGamut = colors.flatMap(({ l, c, h }, i) => (isOklchInGamut(l, c, h, screen) ? [] : [i]));
 
   let minDeltaE = Infinity;
   let closestPair: [number, number] = [0, 0];
@@ -131,7 +126,7 @@ const configs: Config[] = [];
 const seen = new Set<string>();
 for (const [presetName, presetOptions] of presetEntries) {
   for (const [tempName, tempOptions] of temperatureEntries) {
-    const options = { ...presetOptions, ...tempOptions };
+    const options = { ...presetOptions, ...tempOptions, gamut };
     const key = JSON.stringify(categorical(maxCount, options));
     if (seen.has(key)) continue; // ex. vif + mixte = vif seul
     seen.add(key);
@@ -152,12 +147,12 @@ function printDetail(spec: string) {
   if (!presetOptions || !tempOptions) {
     throw new Error(`Préréglage ou température inconnus : ${spec}`);
   }
-  const palette = categorical(Number(countArg), { ...presetOptions, ...tempOptions });
+  const palette = categorical(Number(countArg), { ...presetOptions, ...tempOptions, gamut });
   const report = measure(palette);
 
-  console.log(`\n${presetName} + ${tempName}, ${countArg} classes`);
+  console.log(`\n${presetName} + ${tempName}, ${countArg} classes (gamut: ${gamut}, écran ${screenLabel})`);
   console.log("  #  couleur                          Cmax    gamut  ΔE au plus proche");
-  const displayed = palette.map(parseOklch).map(({ l, c, h }) => oklchToDisplayedOklab(l, c, h));
+  const displayed = palette.map(parseOklch).map(({ l, c, h }) => oklchToDisplayedOklab(l, c, h, screen));
   palette.map(parseOklch).forEach(({ css, l, h }, i) => {
     let nearest = Infinity;
     let nearestIndex = -1;
@@ -165,9 +160,9 @@ function printDetail(spec: string) {
       const d = j === i ? Infinity : deltaEOK(displayed[i], other);
       if (d < nearest) [nearest, nearestIndex] = [d, j];
     });
-    const gamut = report.outOfGamut.includes(i) ? "HORS" : "ok";
+    const inGamut = report.outOfGamut.includes(i) ? "HORS" : "ok";
     console.log(
-      `  ${String(i).padStart(2)} ${css.padEnd(32)} ${fmt(maxChroma(l, h)).padEnd(7)} ${gamut.padEnd(6)} ${fmt(nearest)} (#${nearestIndex})`
+      `  ${String(i).padStart(2)} ${css.padEnd(32)} ${fmt(maxChroma(l, h, screen)).padEnd(7)} ${inGamut.padEnd(6)} ${fmt(nearest)} (#${nearestIndex})`
     );
   });
   console.log(
@@ -185,7 +180,8 @@ function printTables() {
     reports: counts.map((n) => measure(categorical(n, config.options))),
   }));
 
-  console.log("\nΔE OK minimal entre deux couleurs (couleurs affichées, après écrêtage sRGB)");
+  console.log(`\ngamut: "${gamut}" — écran simulé : ${screenLabel}`);
+  console.log(`\nΔE OK minimal entre deux couleurs (couleurs affichées, après écrêtage ${screenLabel})`);
   console.log("  ! < .050 (risque de confusion)   !! < .020 (indiscernables)\n");
   console.log(header);
   for (const { config, reports } of rows) {
@@ -196,7 +192,7 @@ function printTables() {
     console.log(`${label(config)} ${cells.join(" ")}`);
   }
 
-  console.log("\nNombre de couleurs hors du gamut sRGB\n");
+  console.log(`\nNombre de couleurs hors du gamut ${screenLabel}\n`);
   console.log(header);
   for (const { config, reports } of rows) {
     const cells = reports.map(({ outOfGamut }) => String(outOfGamut.length || "·").padStart(4));
