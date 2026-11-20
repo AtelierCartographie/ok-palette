@@ -1,5 +1,6 @@
-import type { ContrastMode, CSSColor, SequentialPaletteOptions } from "./types";
-import { formatOklch, mixOklch, oklabToOklch, type Oklch } from "./oklab";
+import type { ContrastMode, CSSColor, Gamut, SequentialPaletteOptions } from "./types";
+import { formatOklch, gamutAdaptiveBounds, smoothDarkChroma } from "./gamut";
+import { mixOklch, oklabToOklch, type Oklch } from "./oklab";
 import { readColor } from "./parse";
 import { getAdaptiveBounds } from "./utils";
 
@@ -25,7 +26,13 @@ function chromaFactor(contrast: ContrastMode): number {
  * With `gamut: "srgb"` (default) or `"p3"`, colors are computed in JS (same
  * interpolation as the CSS version) and returned as `oklch()` whose chroma is
  * capped, class by class, to the maximum of the target gamut for that
- * lightness and hue (lightness and hue are kept). With `gamut: "none"`, the
+ * lightness and hue (lightness and hue are kept). With a CMYK gamut
+ * (`"cmyk-coated"`, `"cmyk-uncoated"`), the chroma is capped to what is both displayable
+ * in sRGB and printable, and the dark end of the lightness range is raised to
+ * the deepest printable black (the ramp is spread over a shorter range); the
+ * chroma lost near that black is spread over the darkest classes, so the ramp
+ * does not break (see `smoothDarkChroma`).
+ * With `gamut: "none"`, the
  * palette is pure CSS (`color-mix(in oklch, …)`), computed by the browser.
  * If an input color cannot be read in JS (e.g. `var(--x)` outside a browser),
  * the pure CSS palette is returned.
@@ -53,9 +60,8 @@ export function sequential({
     const start = readColor(colorStart);
     const end = colorEnd === undefined ? start : readColor(colorEnd);
     if (start && end) {
-      return sequentialOklch(oklabToOklch(start), oklabToOklch(end), steps, contrast).map(
-        (color) => formatOklch(color, gamut)
-      );
+      const ramp = sequentialOklch(oklabToOklch(start), oklabToOklch(end), steps, contrast, gamut);
+      return smoothDarkChroma(ramp, gamut).map((color) => formatOklch(color, gamut));
     }
   }
   return sequentialCss(colorStart, colorEnd ?? colorStart, steps, contrast);
@@ -65,7 +71,8 @@ export function sequential({
  * Sequential palette as OKLCH numbers: JS equivalent of the CSS version
  * (what the browser computes for `gamut: "none"`). Gamut mapping is applied
  * afterwards, class by class (see `formatOklch`): capping the anchors before
- * interpolating would needlessly dull the mid tones.
+ * interpolating would needlessly dull the mid tones. `gamut` only brings the
+ * lightness bounds inside the printable range of CMYK gamuts.
  *
  * @internal
  */
@@ -73,9 +80,10 @@ export function sequentialOklch(
   start: Oklch,
   end: Oklch,
   steps: number,
-  contrast: ContrastMode
+  contrast: ContrastMode,
+  gamut: Gamut = "none"
 ): Oklch[] {
-  const { start: startL, end: endL } = getAdaptiveBounds(steps, contrast);
+  const { start: startL, end: endL } = gamutAdaptiveBounds(steps, contrast, gamut);
   const light: Oklch = [startL / 100, start[1] / chromaFactor(contrast), start[2]];
   const dark: Oklch = [endL / 100, end[1], end[2]];
 

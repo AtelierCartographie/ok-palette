@@ -1,5 +1,6 @@
 import type { CategoricalColorOptions, CSSColor } from "./types";
-import { deltaEOK, maxChroma, oklchToOklab, type Oklab } from "./oklab";
+import { clampLightnessRange, gamutMaxChroma } from "./gamut";
+import { deltaEOK, oklchToOklab, type Oklab } from "./oklab";
 import { lerp, vanDerCorput } from "./utils";
 
 /**
@@ -74,7 +75,10 @@ const floor = (x: number, digits: number) => Math.floor(x * 10 ** digits) / 10 *
  *   Chroma follows the inverse level in `chromaRange`.
  * - **Chroma** is capped to the maximum reachable in the target `gamut`
  *   (default `"srgb"`, or `"p3"`) for that lightness and hue, so every color is
- *   displayable as is (no browser clipping). `gamut: "none"` disables the cap.
+ *   displayable as is (no browser clipping). With a CMYK gamut
+ *   (`"cmyk-coated"`, `"cmyk-uncoated"`), to what is both displayable in sRGB and printable, and
+ *   `lightnessRange` is kept above the deepest printable black.
+ *   `gamut: "none"` disables the cap.
  *
  * Each color only depends on the previous ones: adding a class never changes
  * the colors already generated.
@@ -110,6 +114,8 @@ export function categorical(
   const colors: CSSColor[] = [];
   const placed: Oklab[] = [];
   const isArc = Math.abs(hueRange[1] - hueRange[0]) <= MAX_ARC_SPAN;
+  // On paper, colors darker than the printable black all print as that black
+  const lRange = clampLightnessRange(lightnessRange, gamut);
 
   for (let i = 0; i < count; i++) {
     // Hue: Van der Corput for optimal distribution
@@ -121,9 +127,9 @@ export function categorical(
     let best: { l: number; c: number; lab: Oklab; score: number } | undefined;
 
     for (const t of lightnessCandidates(i)) {
-      const l = round(lerp(lightnessRange, t), 2);
+      const l = round(lerp(lRange, t), 2);
       const target = round(lerp(chromaRange, 1 - t), 3);
-      const cap = gamut === "none" ? Infinity : floor(maxChroma(l, hue, gamut), 3);
+      const cap = gamut === "none" ? Infinity : floor(gamutMaxChroma(l, hue, gamut), 3);
       const c = Math.max(0, Math.min(target, cap));
       const lab = oklchToOklab(l, c, hue);
 

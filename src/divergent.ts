@@ -3,10 +3,11 @@ import type {
   CSSColor,
   DivergentColorSpace,
   DivergentPaletteOptions,
+  Gamut,
 } from "./types";
+import { formatOklch, gamutAdaptiveBounds, smoothDarkChroma } from "./gamut";
 import {
   CONVERTED_HUE_CHROMA_THRESHOLD,
-  formatOklch,
   mixOklab,
   mixOklch,
   oklabToOklch,
@@ -15,6 +16,18 @@ import {
 import { readColor } from "./parse";
 import { getAdaptiveBounds } from "./utils";
 import { sequential, sequentialOklch } from "./sequential";
+
+/**
+ * `smoothDarkChroma` applied to each side of a divergent palette (left side:
+ * dark extreme first; right side: dark extreme last). No-op except for CMYK
+ * gamuts.
+ */
+function smoothSides(palette: Oklch[], [leftSteps, rightSteps]: [number, number], gamut: Gamut): Oklch[] {
+  const left = smoothDarkChroma(palette.slice(0, leftSteps).reverse(), gamut).reverse();
+  const center = palette.slice(leftSteps, palette.length - rightSteps);
+  const right = smoothDarkChroma(palette.slice(palette.length - rightSteps), gamut);
+  return [...left, ...center, ...right];
+}
 
 /** Reads the two colors of a divergent palette (B: complement of A if omitted) */
 function readPair(colorA: string, colorB?: string): [Oklch, Oklch, boolean] | null {
@@ -57,7 +70,12 @@ function readPair(colorA: string, colorB?: string): [Oklch, Oklch, boolean] | nu
  * 6. **Gamut** : avec `gamut: "srgb"` (défaut) ou `"p3"`, les couleurs sont
  *    calculées en JS (mêmes interpolations que la version CSS) et renvoyées en
  *    `oklch()`, chroma de chaque classe bornée au maximum du gamut visé pour
- *    sa luminosité et sa teinte. Avec `gamut: "none"`, la palette est en CSS pur (`color-mix()`).
+ *    sa luminosité et sa teinte. Avec un gamut CMJN (`"cmyk-coated"`, `"cmyk-uncoated"`),
+ *    la chroma est bornée à ce qui est à la fois affichable en sRGB et
+ *    imprimable, la luminosité des extrêmes est remontée au-dessus du noir
+ *    imprimable et la perte de chroma près de ce noir est étalée sur les
+ *    classes sombres de chaque côté (pas de rupture de teinte).
+ *    Avec `gamut: "none"`, la palette est en CSS pur (`color-mix()`).
  *    Si une couleur ne peut pas être lue en JS, la palette CSS pure est renvoyée.
  *
  * @example
@@ -84,9 +102,8 @@ export function divergent({
   if (gamut !== "none") {
     const pair = readPair(colorA, colorB);
     if (pair) {
-      return divergentOklch(pair[0], pair[1], steps, contrast, hasCenterClass, colorSpace).map(
-        (color) => formatOklch(color, gamut)
-      );
+      const palette = divergentOklch(pair[0], pair[1], steps, contrast, hasCenterClass, colorSpace, gamut);
+      return smoothSides(palette, steps, gamut).map((color) => formatOklch(color, gamut));
     }
   }
 
@@ -142,7 +159,8 @@ export function divergent({
 /**
  * Divergent palette as OKLCH numbers: JS equivalent of the CSS version (what
  * the browser computes for `gamut: "none"`). Gamut mapping is applied
- * afterwards, class by class.
+ * afterwards, class by class. `gamut` only brings the lightness bounds inside
+ * the printable range of CMYK gamuts.
  *
  * @internal
  */
@@ -152,9 +170,10 @@ export function divergentOklch(
   [leftSteps, rightSteps]: [number, number],
   contrast: ContrastMode,
   hasCenterClass: boolean,
-  colorSpace: DivergentColorSpace
+  colorSpace: DivergentColorSpace,
+  gamut: Gamut = "none"
 ): Oklch[] {
-  const { start, end } = getAdaptiveBounds(Math.max(leftSteps, rightSteps), contrast);
+  const { start, end } = gamutAdaptiveBounds(Math.max(leftSteps, rightSteps), contrast, gamut);
   const [startL, endL] = [start / 100, end / 100];
 
   const extremeA: Oklch = [endL, A[1], A[2]];
@@ -218,9 +237,8 @@ export function divergentSequential({
   if (gamut !== "none") {
     const pair = readPair(colorA, colorB);
     if (pair) {
-      return divergentSequentialOklch(pair[0], pair[1], steps, contrast, hasCenterClass).map(
-        (color) => formatOklch(color, gamut)
-      );
+      const palette = divergentSequentialOklch(pair[0], pair[1], steps, contrast, hasCenterClass, gamut);
+      return smoothSides(palette, steps, gamut).map((color) => formatOklch(color, gamut));
     }
   }
 
@@ -263,7 +281,8 @@ export function divergentSequential({
 /**
  * Divergent-sequential palette as OKLCH numbers: JS equivalent of the CSS
  * version (what the browser computes for `gamut: "none"`). Gamut mapping is
- * applied afterwards, class by class.
+ * applied afterwards, class by class. `gamut` only brings the lightness bounds
+ * inside the printable range of CMYK gamuts.
  *
  * @internal
  */
@@ -272,10 +291,11 @@ export function divergentSequentialOklch(
   B: Oklch,
   [leftSteps, rightSteps]: [number, number],
   contrast: ContrastMode,
-  hasCenterClass: boolean
+  hasCenterClass: boolean,
+  gamut: Gamut = "none"
 ): Oklch[] {
-  const leftRamp = sequentialOklch(A, A, leftSteps, contrast).reverse();
-  const rightRamp = sequentialOklch(B, B, rightSteps, contrast);
+  const leftRamp = sequentialOklch(A, A, leftSteps, contrast, gamut).reverse();
+  const rightRamp = sequentialOklch(B, B, rightSteps, contrast, gamut);
   if (!hasCenterClass) return [...leftRamp, ...rightRamp];
 
   const { start: startLeft } = getAdaptiveBounds(leftSteps, contrast);

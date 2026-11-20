@@ -22,6 +22,7 @@ export type {
   ContrastMode,
   ColorFormat,
   Gamut,
+  CmykGamut,
   CSSColor,
   WebGLColor,
   Range,

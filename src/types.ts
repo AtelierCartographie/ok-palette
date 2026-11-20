@@ -6,16 +6,30 @@
 export type ContrastMode = "low" | "normal" | "high";
 
 /**
+ * CMYK offset printing gamuts a palette can be constrained to. Each one is
+ * the intersection of both generations of ISO 12647-2 printing conditions,
+ * so the palette prints whichever profile the printer uses:
+ *
+ * - `"cmyk-coated"`: coated paper (FOGRA39 / ISO Coated v2 and FOGRA51 / PSO Coated v3);
+ * - `"cmyk-uncoated"`: uncoated paper (FOGRA29 / ISO Uncoated and FOGRA52 / PSO Uncoated v3).
+ */
+export type CmykGamut = "cmyk-coated" | "cmyk-uncoated";
+
+/**
  * Target gamut of the generated colors.
  *
  * - `"srgb"`: every color fits the sRGB gamut (all screens). Chroma is
  *   computed in JS and capped per class.
  * - `"p3"`: every color fits the Display P3 gamut (recent Mac, iPhone and
  *   most recent laptop screens). sRGB screens clip what exceeds sRGB.
+ * - `"cmyk-coated"` / `"cmyk-uncoated"` (see {@link CmykGamut}): every color fits both
+ *   sRGB and the CMYK printing condition, so it prints as it is displayed.
+ *   Chroma is capped to what the press can print, and the darkest classes
+ *   are kept above the deepest printable black.
  * - `"none"`: no gamut mapping. Sequential and divergent palettes are pure
  *   CSS (`color-mix()`, relative colors), computed by the browser.
  */
-export type Gamut = "srgb" | "p3" | "none";
+export type Gamut = "srgb" | "p3" | CmykGamut | "none";
 
 /** Output format for color resolution */
 export type ColorFormat = "css" | "webgl";
