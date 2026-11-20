@@ -14,17 +14,17 @@ export const presets = {
   vif: {
     hueRange: [0, 360] as Range,
     chromaRange: [0.15, 0.22] as Range,
-    lightnessRange: [0.6, 0.8] as Range,
+    lightnessRange: [0.55, 0.8] as Range,
   },
   pastel: {
     hueRange: [0, 360] as Range,
-    chromaRange: [0.05, 0.1] as Range,
-    lightnessRange: [0.8, 0.9] as Range,
+    chromaRange: [0.05, 0.12] as Range,
+    lightnessRange: [0.78, 0.93] as Range,
   },
   sepia: {
-    hueRange: [50, 90] as Range,
-    chromaRange: [0.02, 0.05] as Range,
-    lightnessRange: [0.6, 0.9] as Range,
+    hueRange: [25, 85] as Range,
+    chromaRange: [0.03, 0.08] as Range,
+    lightnessRange: [0.4, 0.92] as Range,
   },
 } as const satisfies Record<string, CategoricalColorPreset>;
 
@@ -34,13 +34,17 @@ export const presets = {
  * Combined with a style preset (e.g. `{ ...presets.vif, ...temperature.chaude }`),
  * they restrict the palette to warm or cool hues.
  *
- * Note: `chaude` exceeds 360° to cover the red → yellow transition
- * without discontinuity.
+ * - `chaude`: pinks, reds, oranges, yellows (330° → 450°, 450° being 90°).
+ *   It exceeds 360° to cover the pink → red → yellow transition without
+ *   discontinuity.
+ * - `froide`: greens, cyans, blues, violets (140° → 300°).
+ *
+ * Both are arcs: their two ends are used by the first two colors.
  */
 export const temperature = {
   mixte: { hueRange: [0, 360] as Range },
-  chaude: { hueRange: [300, 480] as Range },
-  froide: { hueRange: [120, 300] as Range },
+  chaude: { hueRange: [330, 450] as Range },
+  froide: { hueRange: [140, 300] as Range },
 } as const satisfies Record<string, { hueRange: Range }>;
 
 export type PresetName = keyof typeof presets;
