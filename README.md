@@ -29,8 +29,11 @@ import {
   temperature,
 } from "@ateliercartographie/ok-palette";
 
-// 5-class monochrome sequential palette
+// 5-class monochrome sequential palette (colors kept inside sRGB by default)
 const mono = sequential({ colorStart: "steelblue" });
+
+// Same palette for Display P3 screens
+const monoP3 = sequential({ colorStart: "steelblue", gamut: "p3" });
 
 // 7-class two-tone sequential palette, high contrast
 const biTone = sequential({
@@ -76,6 +79,24 @@ const css = resolvePalette(mono); // string[]
 const webgl = resolvePalette(mono, { format: "webgl" }); // [r,g,b,a][]
 ```
 
+## Gamut
+
+Every palette function takes a `gamut` option: `"srgb"` (default), `"p3"` or `"none"`.
+
+| `gamut`  | Output                     | Guarantee                                                                 |
+| -------- | -------------------------- | ------------------------------------------------------------------------- |
+| `"srgb"` | `oklch(L C H)` computed in JS | every color fits sRGB: displayed as computed on **every** screen        |
+| `"p3"`   | `oklch(L C H)` computed in JS | every color fits Display P3: more saturated on P3 screens (recent Mac, iPhone, most recent laptops); sRGB screens clip what exceeds sRGB |
+| `"none"` | pure CSS (`color-mix()`, relative colors) for `sequential` and `divergent*`; no chroma cap for `categorical` | none: the browser clips out-of-gamut colors |
+
+**Why it matters.** A requested color can fall outside what the screen can show — a light, still saturated blue at 92 % lightness, a pure green made darker… The browser then clips each RGB channel, so the lightness and hue actually displayed are no longer those of the palette, and two classes can drift toward each other. On a Display P3 screen the problem is smaller (the gamut is wider), which is why it can go unnoticed while designing on a recent Mac.
+
+**How.** CSS cannot compute the maximum chroma of a given lightness and hue, so with `"srgb"` and `"p3"` the colors are computed in JS: the input colors are read as OKLCH, the palette is interpolated exactly as the CSS version would be, then the chroma of **each class** is capped to the maximum of the target gamut for its lightness and hue. Lightness and hue are kept, so the lightness ramp of a sequential palette is untouched.
+
+**Why sRGB by default.** It is the only gamut every screen, projector and print workflow shares: a palette made for sRGB looks the same everywhere, and its classes stay distinct on every screen. Choose `"p3"` for screen-only output aimed at P3 displays.
+
+**Reading input colors.** Hex, named colors, `rgb()`, `hsl()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()` and `color(srgb | srgb-linear | display-p3 | xyz…)` are read in JS (also works in Node). Other syntaxes (`color-mix()`, relative colors, `var()`…) are resolved by the browser. If a color cannot be read (e.g. `var(--x)` outside a browser), the function falls back to its pure CSS output (`"none"`).
+
 ## API
 
 ### `sequential(options)`
@@ -88,17 +109,18 @@ Generates a sequential palette (monochrome or two-tone).
 | `colorEnd`   | `string?`                     | `colorStart` | CSS end color (dark tones). If omitted → monochrome |
 | `steps`      | `number`                      | `5`          | Number of classes (2–12)                            |
 | `contrast`   | `"low" \| "normal" \| "high"` | `"normal"`   | Contrast profile                                    |
+| `gamut`      | `"srgb" \| "p3" \| "none"`    | `"srgb"`     | Target gamut (see [Gamut](#gamut))                  |
 
-**Returns** `string[]` — CSS colors `color-mix(in oklch, …)`.
+**Returns** `string[]` — CSS colors `oklch(…)` (or `color-mix(in oklch, …)` with `gamut: "none"`).
 
 #### How it works
 
-The start color is normalized to a light tone (chroma halved to avoid a fluorescent effect), the end color to a dark tone. The lightness range is automatically adapted to the number of classes via the contrast profile, inspired by ColorBrewer palette analysis:
+The start color is normalized to a light tone (chroma divided by 1.5, 2.5 or 3.5 depending on the contrast profile, to avoid a fluorescent effect), the end color to a dark tone. The lightness range is automatically adapted to the number of classes via the contrast profile, inspired by ColorBrewer palette analysis:
 
 - **3 classes** → ~30% lightness gap
 - **9 classes** → ~70% lightness gap
 
-Interpolation is entirely delegated to the browser via `color-mix(in oklch, …)`: no color library needed.
+Interpolation is done in OKLCH: in JS with `gamut: "srgb"` / `"p3"` (then each class is capped to the gamut), or delegated to the browser via `color-mix(in oklch, …)` with `gamut: "none"`. No color library is needed in either case.
 
 ### `divergent(options)`
 
@@ -112,8 +134,9 @@ Generates a diverging (bipolar) palette around a tinted pivot.
 | `contrast`       | `"low" \| "normal" \| "high"` | `"normal"`             | Contrast profile                 |
 | `hasCenterClass` | `boolean`                     | `false`                | Add a neutral center class       |
 | `colorSpace`     | `"oklab" \| "oklch"`          | `"oklab"`              | Ramp interpolation color space   |
+| `gamut`          | `"srgb" \| "p3" \| "none"`    | `"srgb"`               | Target gamut (see [Gamut](#gamut)) |
 
-**Returns** `string[]` — CSS colors.
+**Returns** `string[]` — CSS colors `oklch(…)` (or `color-mix(…)` with `gamut: "none"`).
 
 #### How it works
 
@@ -152,8 +175,11 @@ Accepts the same options as `divergent()` **except** `colorSpace` (interpolation
 | `steps`          | `[number, number]`            | `[3, 3]`   | Classes per side           |
 | `contrast`       | `"low" \| "normal" \| "high"` | `"normal"` | Contrast profile           |
 | `hasCenterClass` | `boolean`                     | `false`    | Add a neutral center class |
+| `gamut`          | `"srgb" \| "p3" \| "none"`    | `"srgb"`   | Target gamut (see [Gamut](#gamut)) |
 
-**Returns** `string[]` — CSS colors.
+**Returns** `string[]` — CSS colors `oklch(…)` (or `color-mix(…)` with `gamut: "none"`).
+
+> With `contrast: "high"` and `hasCenterClass: true`, the lightest class of each side and the center class share a lightness of about 96–97 %, where sRGB holds very little chroma: once mapped to the gamut they can get very close (ΔE OK ≈ 0.013–0.02). Prefer `contrast: "normal"` or `divergent()` in that case.
 
 ```ts
 // Rigorously identical to two mirrored `sequential` calls
@@ -178,8 +204,9 @@ Generates a categorical color palette.
 | `hueOffset`      | `number`           | `0`            | Hue rotation applied to all colors |
 | `chromaRange`    | `[number, number]` | `[0.15, 0.25]` | Oklch chroma range                 |
 | `lightnessRange` | `[number, number]` | `[0.5, 0.75]`  | Oklch lightness range, values 0–1  |
+| `gamut`          | `"srgb" \| "p3" \| "none"` | `"srgb"` | Target gamut: chroma cap (see [Gamut](#gamut)) |
 
-**Returns** `string[]` — CSS colors `oklch(…)`, all inside the sRGB gamut.
+**Returns** `string[]` — CSS colors `oklch(…)`, all inside the target gamut.
 
 #### Presets
 
@@ -203,7 +230,7 @@ Combining: `categorical(8, { ...presets.vif, ...temperature.chaude })`
 
 - **Hue** — distributed with the [Van der Corput sequence](https://en.wikipedia.org/wiki/Van_der_Corput_sequence) in base 2: the largest gap of the hue range is always filled next. A partial range of 270° or less (e.g. a temperature filter) is treated as an arc: its two ends are used by the first two colors, then the gaps are filled.
 - **Lightness and chroma** — for each new color, 11 lightness levels of `lightnessRange` are tried (chroma follows the inverse level in `chromaRange`: light colors are less saturated). The level kept is the one farthest, in ΔE OK, from the colors already placed, weighted by the share of chroma the hue keeps inside sRGB (so yellows stay light and blues dark instead of turning olive or greyish).
-- **Gamut** — chroma is capped to the maximum reachable in sRGB for that lightness and hue. The browser never has to clip the colors, so the lightness and chroma displayed are the ones computed.
+- **Gamut** — chroma is capped to the maximum reachable in the target gamut (sRGB by default, or Display P3) for that lightness and hue. The browser never has to clip the colors, so the lightness and chroma displayed are the ones computed.
 - **Stability** — each color only depends on the previous ones: adding a class never changes the colors already generated.
 
 The computation is deterministic and fast (≈ 0.3 ms for 16 colors in Node).
@@ -214,7 +241,9 @@ Low-chroma presets have little room to separate many classes. Measured minimal �
 
 #### Diagnostic
 
-`pnpm diagnose:categorical` (Node ≥ 22.18, no dependency) prints, for every preset × temperature and 2 to 16 classes, the number of out-of-gamut colors and the minimal ΔE OK. Options: `--max 24`, `--detail sepia,chaude,8` (colors of one palette), `--json`. See [`scripts/diagnose-categorical.ts`](scripts/diagnose-categorical.ts).
+`pnpm diagnose:categorical` (Node ≥ 22.18, no dependency) prints, for every preset × temperature and 2 to 16 classes, the number of out-of-gamut colors and the minimal ΔE OK. Options: `--gamut p3` (palettes and screen in Display P3), `--max 24`, `--detail sepia,chaude,8` (colors of one palette), `--json`. See [`scripts/diagnose-categorical.ts`](scripts/diagnose-categorical.ts).
+
+`pnpm diagnose:ramps` does the same for `sequential`, `divergent` and `divergentSequential`: for a set of input colors, class counts and contrast profiles, it compares `gamut: "none" | "srgb" | "p3"` on an sRGB and a Display P3 screen (out-of-gamut classes, ΔE OK between computed and displayed colors, neighboring classes that merge once displayed). Option `--detail sequential "oklch(52.4% 0.158 252.3)" 5` lists the classes of one palette. See [`scripts/diagnose-ramps.ts`](scripts/diagnose-ramps.ts).
 
 ### `categoricalPatterns(count, options?)`
 
@@ -230,7 +259,7 @@ Generates categorical pattern parameters compatible with [@ateliercartographie/m
 | `background` | `string`                             | `"#ffffff"`                               | Background color                             |
 | `patchSize`  | `boolean`                            | `true`                                    | Enable patchSize                             |
 | `vdcOffset`  | `number`                             | `0`                                       | Van der Corput offset                        |
-| `colorize`   | `boolean \| CategoricalColorOptions` | `false`                                   | Auto-colorize pattern fill via `categorical` |
+| `colorize`   | `boolean \| CategoricalColorOptions` | `false`                                   | Auto-colorize pattern fill via `categorical` (pass `{ gamut: "p3" }` to change the gamut; `true` uses sRGB) |
 
 **Returns** `PatternParams[]`
 
@@ -293,7 +322,7 @@ A sequential palette only works if the lightness gap between the first and last 
 ### Solution
 
 - **Universal**: normalizes any CSS color before generating the palette
-- **Modern**: zero dependencies, relies on native `oklch` and `color-mix()`
+- **Modern**: zero dependencies, relies on native `oklch` (and `color-mix()` with `gamut: "none"`); gamut mapping to sRGB or Display P3 is computed in a few lines of JS
 - **Performant**: categorical palettes are built in a single deterministic pass (Van der Corput hues, best of 11 lightness levels per color), unlike iterative approaches like I Want Hue
 
 ## Development
@@ -305,8 +334,9 @@ pnpm dev
 # Build the library
 pnpm build
 
-# Measure categorical palettes (gamut, minimal ΔE OK)
+# Measure palettes (gamut, minimal ΔE OK)
 pnpm diagnose:categorical
+pnpm diagnose:ramps
 ```
 
 ## License

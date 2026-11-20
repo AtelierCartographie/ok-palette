@@ -26,7 +26,7 @@ const L_PREFERENCE = [0.8, 0.2, 0.5] as const;
  *
  * Without it, the farthest level is sometimes one where the hue cannot hold
  * its chroma (dark yellows turn olive, light blues turn greyish).
- * 0.5 keeps hues near their sRGB cusp at a small cost in minimal ΔE.
+ * 0.5 keeps hues near their gamut cusp at a small cost in minimal ΔE.
  */
 const CHROMA_WEIGHT = 0.5;
 
@@ -72,8 +72,9 @@ const floor = (x: number, digits: number) => Math.floor(x * 10 ** digits) / 10 *
  *   `lightnessRange`: the level whose color is farthest (ΔE OK) from all the
  *   colors already placed, favoring levels where the hue keeps its chroma.
  *   Chroma follows the inverse level in `chromaRange`.
- * - **Chroma** is capped to the maximum reachable in sRGB for that lightness
- *   and hue, so every color is displayable as is (no browser clipping).
+ * - **Chroma** is capped to the maximum reachable in the target `gamut`
+ *   (default `"srgb"`, or `"p3"`) for that lightness and hue, so every color is
+ *   displayable as is (no browser clipping). `gamut: "none"` disables the cap.
  *
  * Each color only depends on the previous ones: adding a class never changes
  * the colors already generated.
@@ -103,6 +104,7 @@ export function categorical(
     hueOffset = 0,
     chromaRange = [0.15, 0.25],
     lightnessRange = [0.5, 0.75],
+    gamut = "srgb",
   }: CategoricalColorOptions = {}
 ): CSSColor[] {
   const colors: CSSColor[] = [];
@@ -115,13 +117,14 @@ export function categorical(
     const hue = round(((rawHue % 360) + 360) % 360, 2);
 
     // Lightness / chroma: the level farthest from the colors already placed,
-    // weighted by the chroma it keeps inside the sRGB gamut
+    // weighted by the chroma it keeps inside the target gamut
     let best: { l: number; c: number; lab: Oklab; score: number } | undefined;
 
     for (const t of lightnessCandidates(i)) {
       const l = round(lerp(lightnessRange, t), 2);
       const target = round(lerp(chromaRange, 1 - t), 3);
-      const c = Math.max(0, Math.min(target, floor(maxChroma(l, hue), 3)));
+      const cap = gamut === "none" ? Infinity : floor(maxChroma(l, hue, gamut), 3);
+      const c = Math.max(0, Math.min(target, cap));
       const lab = oklchToOklab(l, c, hue);
 
       const nearest = placed.reduce((min, other) => Math.min(min, deltaEOK(lab, other)), 1);
