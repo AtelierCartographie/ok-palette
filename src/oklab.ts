@@ -183,27 +183,6 @@ export function deltaEOK(a: Oklab, b: Oklab): number {
 }
 
 // ---------------------------------------------------------------------------
-// Output
-// ---------------------------------------------------------------------------
-
-const roundTo = (x: number, digits: number) => Math.round(x * 10 ** digits) / 10 ** digits;
-const floorTo = (x: number, digits: number) => Math.floor(x * 10 ** digits) / 10 ** digits;
-
-/**
- * Formats an OKLCH color as a CSS `oklch()` string, with its chroma capped
- * to the given gamut (if any) after rounding lightness and hue.
- *
- * Output: `oklch(93.12% 0.0632 252.30)`.
- */
-export function formatOklch([l, c, h]: Oklch, gamut?: RgbGamut): string {
-  const L = roundTo(Math.min(1, Math.max(0, l)), 4);
-  const H = roundTo(((h % 360) + 360) % 360, 2) % 360;
-  let C = roundTo(Math.max(0, c), 4);
-  if (gamut) C = Math.min(C, floorTo(maxChroma(L, H, gamut), 4));
-  return `oklch(${(L * 100).toFixed(2)}% ${C.toFixed(4)} ${H.toFixed(2)})`;
-}
-
-// ---------------------------------------------------------------------------
 // Interpolation (JS equivalent of CSS `color-mix()`)
 // ---------------------------------------------------------------------------
 

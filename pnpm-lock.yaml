@@ -11,6 +11,9 @@ importers:
       '@ateliercartographie/motif.js':
         specifier: ^0.1.4
         version: 0.1.4
+      jscolorengine:
+        specifier: 1.7.1
+        version: 1.7.1
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -330,6 +333,9 @@ packages:
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
+  jscolorengine@1.7.1:
+    resolution: {integrity: sha512-Cm4DYdWnPj0f4ILbrAID8TFl9Ok85flUoOL4jNVLDFTTHE2iPUlbSpzuMqeeFKW3UL5AvNg0DHjwwtrSQsvMDg==}
+
   nanoid@3.3.11:
     resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
@@ -602,6 +608,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  jscolorengine@1.7.1: {}
 
   nanoid@3.3.11: {}
 

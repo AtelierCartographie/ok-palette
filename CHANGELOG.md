@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Gamuts d'impression CMJN** — `gamut: "cmyk-coated"` (offset, papier couché) et `gamut: "cmyk-uncoated"` (offset, papier non couché) sur `sequential()`, `divergent()`, `divergentSequential()`, `categorical()` et, via `colorize`, `categoricalPatterns()`. Chaque gamut est l'intersection des deux générations de normes ISO 12647-2 (couché : FOGRA39 et FOGRA51 ; non couché : FOGRA29 et FOGRA52), pour que la palette s'imprime quel que soit le profil de l'imprimeur. La chroma de chaque classe est bornée à ce qui est à la fois affichable en sRGB et imprimable ; la luminosité reste au-dessus du noir imprimable, assez haut pour que la classe la plus sombre garde sa teinte (OKLab L ≥ 0,34 en couché, ≥ 0,50 en non couché), ce qui remonte l'extrémité sombre des rampes séquentielles et divergentes et borne `lightnessRange` des palettes catégorielles ; dans les rampes, la perte de chroma près du noir est étalée sur les classes sombres (`smoothDarkChroma`) pour éviter une dernière classe grisée en rupture avec les autres. Sur le jeu d'essai (1 959 classes), les classes qui ne s'impriment pas comme elles s'affichent passent de 38–54 % (couché) et 54–69 % (non couché) en `"srgb"` à 0, contrôlé avec chacun des quatre profils. Types `CmykGamut` et `Gamut` étendus.
+- Tables de gamut CMJN précalculées (`src/cmyk-gamuts.data.ts`, ≈ 1,7 Ko gzip par profil) par `scripts/build-cmyk-gamuts.ts` (`pnpm build:cmyk-gamuts`) à partir des profils ICC (Adobe pour FOGRA39/29, ECI via le registre de l'ICC pour FOGRA51/52, non versionnés), avec [jsColorEngine](https://github.com/glennwilton/jsColorEngine) en dépendance de développement uniquement : la bibliothèque reste sans dépendance.
+- `scripts/build-cmyk-luts.ts` (`pnpm build:cmyk-luts`) : tables sRGB → CMJN (grille 33³, colorimétrie relative sans BPC) pour l'export des valeurs CMJN du générateur web ; hors bibliothèque.
+- `scripts/diagnose-cmyk.ts` (`pnpm diagnose:cmyk`) : précision des tables, classes non imprimables et confondues à l'impression en `"srgb"` et en CMJN, écart à l'export selon l'intention de rendu (relative, relative + compensation du point noir, perceptive).
+
+### Changed
+
+- `formatOklch` (interne) passe de `src/oklab.ts` à `src/gamut.ts`. Les palettes `"srgb"`, `"p3"` et `"none"` sont inchangées (2 674 palettes comparées à la 0.2.0).
+
 ## [0.2.0] - 2026-11-20
 
 ### Changed

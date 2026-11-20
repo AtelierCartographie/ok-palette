@@ -35,6 +35,9 @@ const mono = sequential({ colorStart: "steelblue" });
 // Same palette for Display P3 screens
 const monoP3 = sequential({ colorStart: "steelblue", gamut: "p3" });
 
+// Same palette for offset printing on coated paper (CMYK)
+const monoPrint = sequential({ colorStart: "steelblue", gamut: "cmyk-coated" });
+
 // 7-class two-tone sequential palette, high contrast
 const biTone = sequential({
   colorStart: "#f4e285",
@@ -81,19 +84,53 @@ const webgl = resolvePalette(mono, { format: "webgl" }); // [r,g,b,a][]
 
 ## Gamut
 
-Every palette function takes a `gamut` option: `"srgb"` (default), `"p3"` or `"none"`.
+Every palette function takes a `gamut` option: `"srgb"` (default), `"p3"`, `"cmyk-coated"`, `"cmyk-uncoated"` or `"none"`.
 
 | `gamut`  | Output                     | Guarantee                                                                 |
 | -------- | -------------------------- | ------------------------------------------------------------------------- |
 | `"srgb"` | `oklch(L C H)` computed in JS | every color fits sRGB: displayed as computed on **every** screen        |
 | `"p3"`   | `oklch(L C H)` computed in JS | every color fits Display P3: more saturated on P3 screens (recent Mac, iPhone, most recent laptops); sRGB screens clip what exceeds sRGB |
+| `"cmyk-coated"` | `oklch(L C H)` computed in JS | every color fits sRGB **and** prints as displayed in CMYK offset on coated paper — see [Print (CMYK)](#print-cmyk) |
+| `"cmyk-uncoated"` | `oklch(L C H)` computed in JS | same, on uncoated paper |
 | `"none"` | pure CSS (`color-mix()`, relative colors) for `sequential` and `divergent*`; no chroma cap for `categorical` | none: the browser clips out-of-gamut colors |
 
 **Why it matters.** A requested color can fall outside what the screen can show — a light, still saturated blue at 92 % lightness, a pure green made darker… The browser then clips each RGB channel, so the lightness and hue actually displayed are no longer those of the palette, and two classes can drift toward each other. On a Display P3 screen the problem is smaller (the gamut is wider), which is why it can go unnoticed while designing on a recent Mac.
 
 **How.** CSS cannot compute the maximum chroma of a given lightness and hue, so with `"srgb"` and `"p3"` the colors are computed in JS: the input colors are read as OKLCH, the palette is interpolated exactly as the CSS version would be, then the chroma of **each class** is capped to the maximum of the target gamut for its lightness and hue. Lightness and hue are kept, so the lightness ramp of a sequential palette is untouched.
 
-**Why sRGB by default.** It is the only gamut every screen, projector and print workflow shares: a palette made for sRGB looks the same everywhere, and its classes stay distinct on every screen. Choose `"p3"` for screen-only output aimed at P3 displays.
+**Why sRGB by default.** It is the only gamut every screen and projector shares: a palette made for sRGB looks the same everywhere, and its classes stay distinct on every screen. Choose `"p3"` for screen-only output aimed at P3 displays, `"cmyk-coated"` / `"cmyk-uncoated"` for a map that ends up printed.
+
+### Print (CMYK)
+
+Offset printing reproduces fewer colors than a screen: about half of the sRGB volume on coated paper, under a third on uncoated paper (violets, greens and bright blues lose the most). Measured on this repository's test set, **38 to 54 %** of the classes of sRGB palettes do not print as displayed on coated paper (**54 to 69 %** on uncoated paper), some by ΔE00 > 10, and dark sequential classes merge.
+
+With `gamut: "cmyk-coated"` or `"cmyk-uncoated"`, each palette is computed for both the screen and the press:
+
+- **Chroma** of each class is capped to what is both displayable in sRGB and printable (CMYK prints some cyans and yellows that sRGB cannot show, so the intersection is used). Lightness and hue are kept, as with `"srgb"`.
+- **Lightness** is kept above the deepest printable black, and high enough for the darkest class to keep its hue: OKLab L ≥ 0.34 on coated paper, ≥ 0.50 on uncoated paper. The printing gamut narrows to a point toward black: just above it, colors would all print as nearly the same grey. Each floor is the higher of the printable black + 0.04 and the lowest lightness where the median printable chroma reaches 0.06. Sequential and divergent ramps are spread over this shorter range (their dark end is raised), and `categorical`'s `lightnessRange` is clipped to it. On uncoated paper, sequential palettes are therefore noticeably less contrasted: prefer fewer classes.
+- **Dark end of ramps.** Even above that floor, the darkest classes of a ramp hold much less chroma than the mid tones. Capped class by class, the last class would lose most of its chroma at once and break away from the ramp (it reads as grey, out of the family). In sequential and divergent palettes, that loss is spread over the darkest classes: the share of chroma a class keeps may only recover by 100 % of the ramp length away from the dark end, so the ramp desaturates progressively toward it. The light end is untouched.
+- The output is still CSS `oklch()`, displayed as computed on every screen.
+
+**Which printing condition.** Printers work either with the ISO 12647-2:2004 conditions (FOGRA39 / *ISO Coated v2*, FOGRA29 / *ISO Uncoated*, still the most requested) or with their 2013 successors (FOGRA51 / *PSO Coated v3*, FOGRA52 / *PSO Uncoated v3*). Their gamuts are close but not identical: a palette made for FOGRA29 alone has 6 to 9 % of its classes out of gamut in FOGRA52. Each ok-palette gamut is therefore the **intersection of both generations**, so the palette prints whichever profile the printer uses, at a negligible cost in chroma:
+
+| `gamut` | Paper | Printable with |
+| --- | --- | --- |
+| `"cmyk-coated"` | coated (premium, glossy or matte) | FOGRA39 (ISO Coated v2) and FOGRA51 (PSO Coated v3) |
+| `"cmyk-uncoated"` | uncoated (offset, wood-free) | FOGRA29 (ISO Uncoated) and FOGRA52 (PSO Uncoated v3) |
+
+Result on the same test set (1,959 classes), checked against each of the four profiles: every class prints as displayed (ICC round trip < ΔE00 2), and printing no longer merges neighboring classes.
+
+**How.** A CMYK gamut has no formula: it is measured, and described by an ICC profile. `scripts/build-cmyk-gamuts.ts` reads the profiles once with [jsColorEngine](https://github.com/glennwilton/jsColorEngine) (a development dependency only) and stores, per gamut, the maximum OKLCH chroma printable with every profile on a lightness × hue grid (0.02 × 5°, interpolated) and the lightest of their blacks. The tables weigh ≈ 1.7 KB gzip each; the library stays dependency-free.
+
+**Exporting for print.** The palette is printable as is, so it must be converted to CMYK **without any compression**: relative colorimetric intent, **without black point compensation**, with the printer's profile. Worst case over the two profiles of each gamut, for the sequential and categorical palettes of the test set converted from sRGB (`pnpm diagnose:cmyk`):
+
+| Conversion | `cmyk-coated`, ΔE00 p95 / max | `cmyk-uncoated`, ΔE00 p95 / max |
+| --- | --- | --- |
+| relative colorimetric | 1.4 / 1.8 | 1.4 / 1.6 |
+| relative colorimetric + black point compensation | 4.5 / 5.9 | 8.9 / 9.2 |
+| perceptual | 5.2 / 6.4 | 11.2 / 11.8 |
+
+Black point compensation and the perceptual intent lighten the dark classes, which are already above the printable black. In Illustrator, InDesign or Photoshop: the printer's CMYK profile for the document, and in *Edit › Color Settings* (or *Convert to Profile*) the *Relative Colorimetric* intent with *Use Black Point Compensation* unchecked — Adobe's default European settings check it.
 
 **Reading input colors.** Hex, named colors, `rgb()`, `hsl()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()` and `color(srgb | srgb-linear | display-p3 | xyz…)` are read in JS (also works in Node). Other syntaxes (`color-mix()`, relative colors, `var()`…) are resolved by the browser. If a color cannot be read (e.g. `var(--x)` outside a browser), the function falls back to its pure CSS output (`"none"`).
 
@@ -109,7 +146,7 @@ Generates a sequential palette (monochrome or two-tone).
 | `colorEnd`   | `string?`                     | `colorStart` | CSS end color (dark tones). If omitted → monochrome |
 | `steps`      | `number`                      | `5`          | Number of classes (2–12)                            |
 | `contrast`   | `"low" \| "normal" \| "high"` | `"normal"`   | Contrast profile                                    |
-| `gamut`      | `"srgb" \| "p3" \| "none"`    | `"srgb"`     | Target gamut (see [Gamut](#gamut))                  |
+| `gamut`      | [`Gamut`](#gamut)    | `"srgb"`     | Target gamut (see [Gamut](#gamut))                  |
 
 **Returns** `string[]` — CSS colors `oklch(…)` (or `color-mix(in oklch, …)` with `gamut: "none"`).
 
@@ -134,7 +171,7 @@ Generates a diverging (bipolar) palette around a tinted pivot.
 | `contrast`       | `"low" \| "normal" \| "high"` | `"normal"`             | Contrast profile                 |
 | `hasCenterClass` | `boolean`                     | `false`                | Add a neutral center class       |
 | `colorSpace`     | `"oklab" \| "oklch"`          | `"oklab"`              | Ramp interpolation color space   |
-| `gamut`          | `"srgb" \| "p3" \| "none"`    | `"srgb"`               | Target gamut (see [Gamut](#gamut)) |
+| `gamut`          | [`Gamut`](#gamut)    | `"srgb"`               | Target gamut (see [Gamut](#gamut)) |
 
 **Returns** `string[]` — CSS colors `oklch(…)` (or `color-mix(…)` with `gamut: "none"`).
 
@@ -175,7 +212,7 @@ Accepts the same options as `divergent()` **except** `colorSpace` (interpolation
 | `steps`          | `[number, number]`            | `[3, 3]`   | Classes per side           |
 | `contrast`       | `"low" \| "normal" \| "high"` | `"normal"` | Contrast profile           |
 | `hasCenterClass` | `boolean`                     | `false`    | Add a neutral center class |
-| `gamut`          | `"srgb" \| "p3" \| "none"`    | `"srgb"`   | Target gamut (see [Gamut](#gamut)) |
+| `gamut`          | [`Gamut`](#gamut)    | `"srgb"`   | Target gamut (see [Gamut](#gamut)) |
 
 **Returns** `string[]` — CSS colors `oklch(…)` (or `color-mix(…)` with `gamut: "none"`).
 
@@ -204,7 +241,7 @@ Generates a categorical color palette.
 | `hueOffset`      | `number`           | `0`            | Hue rotation applied to all colors |
 | `chromaRange`    | `[number, number]` | `[0.15, 0.25]` | Oklch chroma range                 |
 | `lightnessRange` | `[number, number]` | `[0.5, 0.75]`  | Oklch lightness range, values 0–1  |
-| `gamut`          | `"srgb" \| "p3" \| "none"` | `"srgb"` | Target gamut: chroma cap (see [Gamut](#gamut)) |
+| `gamut`          | [`Gamut`](#gamut) | `"srgb"` | Target gamut: chroma cap (see [Gamut](#gamut)) |
 
 **Returns** `string[]` — CSS colors `oklch(…)`, all inside the target gamut.
 
@@ -230,7 +267,7 @@ Combining: `categorical(8, { ...presets.vif, ...temperature.chaude })`
 
 - **Hue** — distributed with the [Van der Corput sequence](https://en.wikipedia.org/wiki/Van_der_Corput_sequence) in base 2: the largest gap of the hue range is always filled next. A partial range of 270° or less (e.g. a temperature filter) is treated as an arc: its two ends are used by the first two colors, then the gaps are filled.
 - **Lightness and chroma** — for each new color, 11 lightness levels of `lightnessRange` are tried (chroma follows the inverse level in `chromaRange`: light colors are less saturated). The level kept is the one farthest, in ΔE OK, from the colors already placed, weighted by the share of chroma the hue keeps inside sRGB (so yellows stay light and blues dark instead of turning olive or greyish).
-- **Gamut** — chroma is capped to the maximum reachable in the target gamut (sRGB by default, or Display P3) for that lightness and hue. The browser never has to clip the colors, so the lightness and chroma displayed are the ones computed.
+- **Gamut** — chroma is capped to the maximum reachable in the target gamut (sRGB by default, Display P3, or sRGB ∩ CMYK for print) for that lightness and hue. The browser never has to clip the colors, so the lightness and chroma displayed are the ones computed.
 - **Stability** — each color only depends on the previous ones: adding a class never changes the colors already generated.
 
 The computation is deterministic and fast (≈ 0.3 ms for 16 colors in Node).
@@ -322,7 +359,7 @@ A sequential palette only works if the lightness gap between the first and last 
 ### Solution
 
 - **Universal**: normalizes any CSS color before generating the palette
-- **Modern**: zero dependencies, relies on native `oklch` (and `color-mix()` with `gamut: "none"`); gamut mapping to sRGB or Display P3 is computed in a few lines of JS
+- **Modern**: zero dependencies, relies on native `oklch` (and `color-mix()` with `gamut: "none"`); gamut mapping to sRGB or Display P3 is computed in a few lines of JS, and to CMYK print from small precomputed tables
 - **Performant**: categorical palettes are built in a single deterministic pass (Van der Corput hues, best of 11 lightness levels per color), unlike iterative approaches like I Want Hue
 
 ## Development
@@ -337,7 +374,18 @@ pnpm build
 # Measure palettes (gamut, minimal ΔE OK)
 pnpm diagnose:categorical
 pnpm diagnose:ramps
+
+# Measure palettes printed in CMYK (ICC round trip with jsColorEngine)
+pnpm diagnose:cmyk
+
+# Regenerate the CMYK gamut tables (src/cmyk-gamuts.data.ts) from ICC profiles
+pnpm build:cmyk-gamuts
+
+# sRGB → CMYK tables of the web generator (CMYK values export), not part of the library
+pnpm build:cmyk-luts --out ../web-atelier/static/ok-palette/cmyk --check ../web-atelier/src/lib/data/ok-palette/cmyk.js
 ```
+
+The CMYK scripts read four ICC profiles: FOGRA39 and FOGRA29 installed with Adobe Creative Cloud on macOS (`/Library/Application Support/Adobe/Color/Profiles/Recommended/`), and the ECI profiles [PSOcoated_v3.icc](https://registry.color.org/profile-registry/PSOcoated_v3) and [PSOuncoated_v3_FOGRA52.icc](https://registry.color.org/profile-registry/PSOuncoated_v3_FOGRA52) from the ICC registry, to put in `icc/`. That folder is not versioned: the profiles' licenses allow use, not redistribution. `--profile cmyk-coated=/a.icc,/b.icc` uses other files.
 
 ## License
 
