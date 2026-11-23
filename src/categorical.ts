@@ -33,6 +33,21 @@ const L_PREFERENCE = [0.8, 0.2, 0.5] as const;
 const CHROMA_WEIGHT = 0.5;
 
 /**
+ * Minimal share of the reachable chroma a lightness level must keep to be
+ * considered at all.
+ *
+ * The reachable chroma of a level is its target chroma, bounded by the best
+ * chroma the hue holds on any level of `lightnessRange` inside the gamut.
+ * Without this cut, when the aimed chroma is out of the gamut on every level
+ * (a very saturated base color, a print gamut), a light and nearly grey level
+ * is often the farthest from colors that are all saturated, and wins despite
+ * the chroma weight: that class looks much paler than the others.
+ *
+ * At 0.6, no palette of the vif, pastel and sepia presets changes in sRGB or P3.
+ */
+const MIN_CHROMA_SHARE = 0.6;
+
+/**
  * Hue ranges spanning at most this many degrees are treated as an arc
  * (both ends are used); wider ranges are treated as a full circle.
  */
@@ -114,6 +129,9 @@ const formatColor = (l: number, c: number, h: number, cDigits = 3): CSSColor =>
  * - **Lightness** is chosen, for each new color, among 11 levels of
  *   `lightnessRange`: the level whose color is farthest (ΔE OK) from all the
  *   colors already placed, favoring levels where the hue keeps its chroma.
+ *   Levels keeping less than 60 % of the chroma the hue can reach on its best
+ *   level are skipped, so no class is much paler than the others when the
+ *   aimed chroma is out of the gamut.
  *   Chroma follows the inverse level in `chromaRange`.
  * - **Chroma** is capped to the maximum reachable in the target `gamut`
  *   (default `"srgb"`, or `"p3"`) for that lightness and hue, so every color is
@@ -200,15 +218,23 @@ export function categorical(count: number, options: CategoricalColorOptions = {}
 
     // Lightness / chroma: the level farthest from the colors already placed,
     // weighted by the chroma it keeps inside the target gamut
-    let best: { l: number; c: number; lab: Oklab; score: number } | undefined;
-
-    for (const t of lightnessCandidates(i)) {
+    const levels = lightnessCandidates(i).map((t) => {
       const l = round(lerp(lRange, t), 2);
       const target = round(lerp(chromaRange, 1 - t), 3);
       const cap = gamut === "none" ? Infinity : floor(gamutMaxChroma(l, hue, gamut), 3);
-      const c = Math.max(0, Math.min(target, cap));
-      const lab = oklchToOklab(l, c, hue);
+      return { l, target, c: Math.max(0, Math.min(target, cap)) };
+    });
+    // Best chroma this hue can hold on any level (within the targets)
+    const reachable = Math.max(...levels.map((v) => v.c));
 
+    let best: { l: number; c: number; lab: Oklab; score: number } | undefined;
+
+    for (const { l, target, c } of levels) {
+      // Skip levels that lose much more chroma than the hue has to
+      const ref = Math.min(target, reachable);
+      if (ref > 0 && c < MIN_CHROMA_SHARE * ref) continue;
+
+      const lab = oklchToOklab(l, c, hue);
       const nearest = placed.reduce((min, other) => Math.min(min, deltaEOK(lab, other)), 1);
       const kept = target > 0 ? c / target : 1;
       const score = nearest * kept ** CHROMA_WEIGHT;
