@@ -103,6 +103,38 @@ describe("categorical() with baseColor", () => {
     }
   });
 
+  test("in-gamut colors: palette unchanged", () => {
+    assert.deepEqual(categorical(6, { baseColor: "#e63946" }), [
+      "oklch(61.22% 0.2082 22.24)",
+      "oklch(65% 0.110 202.24)",
+      "oklch(65% 0.144 112.24)",
+      "oklch(47% 0.262 292.24)",
+      "oklch(45% 0.099 67.24)",
+      "oklch(47% 0.124 247.24)",
+    ]);
+  });
+
+  test("color outside the gamut: chroma range centred on the capped chroma", () => {
+    // L 85 % C 0.34 H 233: sRGB holds 0.089 there, P3 0.097
+    for (const gamut of ["srgb", "p3", "cmyk-coated", "cmyk-uncoated"] as const) {
+      const colors = categorical(8, { baseColor: "oklch(85% 0.34 233)", gamut });
+      const [, c0] = oklch(colors[0]);
+      // chromaRange = [C − 0.2·wC, C + 0.8·wC], wC = 0.45·C, with C the capped chroma
+      // (before: centred on 0.34, every class aimed at 0.31–0.46)
+      for (const color of colors.slice(1)) {
+        const [, C] = oklch(color);
+        assert.ok(C <= c0 * (1 + 0.8 * 0.45) + 0.001, `${gamut}: ${color} vs first ${colors[0]}`);
+      }
+    }
+  });
+
+  test("color outside the gamut: same palette as its capped color", () => {
+    for (const gamut of ["srgb", "p3", "cmyk-coated"] as const) {
+      const a = categorical(8, { baseColor: "oklch(70% 0.3 145)", gamut });
+      assert.deepEqual(categorical(8, { baseColor: a[0], gamut }).slice(1), a.slice(1), gamut);
+    }
+  });
+
   test("explicit ranges set the width of the recentred ranges", () => {
     const hex = "#2a9d8f";
     const [l, c] = oklch(hex);
