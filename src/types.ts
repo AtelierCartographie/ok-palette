@@ -120,6 +120,22 @@ export interface CategoricalColorOptions {
   lightnessRange?: Range;
   /** Target gamut (default: "srgb") */
   gamut?: Gamut;
+  /**
+   * First color of the palette (any CSS color, e.g. `"#e63946"` or
+   * `"oklch(62% 0.2 25)"`). The palette starts with it (chroma capped to
+   * `gamut`) and derives a matching style for the next colors:
+   *
+   * - the hue range starts at its hue: `hueOffset` is ignored, and an arc
+   *   (≤ 270°) keeps its span but is rotated to start there;
+   * - `lightnessRange` and `chromaRange` are recentred so that the color sits
+   *   at 80 % of the lightness range and 20 % of the chroma range (the level
+   *   the first color takes), shifted back inside [0, 1] / above 0 if needed.
+   *   Only their **width** is taken from the options; defaults: 0.2 in
+   *   lightness, 45 % of the color's chroma (at least 0.02) in chroma.
+   *
+   * Ignored if the color cannot be read (unknown syntax outside a browser).
+   */
+  baseColor?: string;
 }
 
 /** Predefined categorical color presets */
