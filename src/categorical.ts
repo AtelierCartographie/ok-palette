@@ -1,5 +1,5 @@
 import type { CategoricalColorOptions, CSSColor, Range } from "./types";
-import { clampLightnessRange, gamutMaxChroma } from "./gamut";
+import { clampLightnessRange, gamutLightnessRange, gamutMaxChroma } from "./gamut";
 import { deltaEOK, oklabToOklch, oklchToOklab, type Oklab, type Oklch } from "./oklab";
 import { readColor } from "./parse";
 import { lerp, vanDerCorput } from "./utils";
@@ -185,16 +185,30 @@ export function categorical(count: number, options: CategoricalColorOptions = {}
   const placed: Oklab[] = [];
 
   const lab = baseColor === undefined ? null : readColor(baseColor);
-  const base = lab && oklabToOklch(lab);
-  if (base) {
+  const color = lab && oklabToOklch(lab);
+  // baseColor: the first color is the color itself (rounded finer than the
+  // other levels), only brought inside the gamut. The ranges are recentred on
+  // this displayed color, not on the requested one: otherwise, for a color out
+  // of the gamut, the whole chroma range aims out of the gamut too.
+  let first: Oklch | null = null;
+  if (color) {
+    const [min, max] = gamutLightnessRange(gamut);
+    const l = round(Math.min(max, Math.max(min, color[0])), 4);
+    const h = round(((color[2] % 360) + 360) % 360, 2);
+    const cap = gamut === "none" ? Infinity : gamutMaxChroma(l, h, gamut);
+    first = [l, Math.max(0, Math.min(round(color[1], 4), floor(cap, 4))), h];
+    // Chroma the ranges are centred on: unrounded, so in-gamut colors keep the
+    // ranges they always had
+    const c = Math.max(0, Math.min(color[1], cap));
+
     const width = (r: Range | undefined, fallback: number) =>
       r ? Math.abs(r[1] - r[0]) : fallback;
     ({ lightnessRange, chromaRange } = rangesAroundColor(
-      base,
+      [color[0], c, h],
       width(options.lightnessRange, BASE_L_WIDTH),
-      width(options.chromaRange, Math.max(BASE_MIN_C_WIDTH, base[1] * BASE_C_RATIO))
+      width(options.chromaRange, Math.max(BASE_MIN_C_WIDTH, c * BASE_C_RATIO))
     ));
-    hueOffset = base[2] - hueRange[0];
+    hueOffset = color[2] - hueRange[0];
   }
   const isArc = Math.abs(hueRange[1] - hueRange[0]) <= MAX_ARC_SPAN;
   // On paper, colors darker than the printable black all print as that black
@@ -205,14 +219,9 @@ export function categorical(count: number, options: CategoricalColorOptions = {}
     const rawHue = lerp(hueRange, hueFraction(i, isArc)) + hueOffset;
     const hue = round(((rawHue % 360) + 360) % 360, 2);
 
-    // baseColor: the first color is the color itself (rounded finer than the
-    // other levels), only capped to the gamut
-    if (i === 0 && base) {
-      const l = round(Math.min(lRange[1], Math.max(lRange[0], base[0])), 4);
-      const cap = gamut === "none" ? Infinity : floor(gamutMaxChroma(l, hue, gamut), 4);
-      const c = Math.max(0, Math.min(round(base[1], 4), cap));
-      placed.push(oklchToOklab(l, c, hue));
-      colors.push(formatColor(l, c, hue, 4));
+    if (i === 0 && first) {
+      placed.push(oklchToOklab(...first));
+      colors.push(formatColor(...first, 4));
       continue;
     }
 

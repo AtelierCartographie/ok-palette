@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `categorical()` : quand elle vient de `baseColor`, la première couleur est écrite plus finement (luminosité à deux décimales en pourcentage, chroma à quatre : `oklch(61.22% 0.2082 22.24)`), pour qu’une couleur hex se retrouve à l’identique. Sans `baseColor`, la sortie est identique à la 0.3.0 (160 configurations comparées).
+- `categorical()` avec `baseColor` hors du gamut : `chromaRange` (et sa largeur par défaut, 45 % de la chroma) est recentrée sur la chroma de la première couleur **bornée au gamut**, et non plus sur la chroma demandée. Avant, toute la plage visée restait hors gamut : la première couleur sortait bornée (ex. `oklch(85% 0.34 233)` → `oklch(85% 0.0893 233)` en sRGB) mais les suivantes visaient 0,31–0,46 et sortaient bien plus saturées qu'elle. Une couleur hors gamut donne maintenant la même palette que sa version bornée. Les couleurs dans le gamut, la première couleur et les palettes sans `baseColor` sont inchangées.
 
 ### Fixed
 
