@@ -71,6 +71,9 @@ const warm = categorical(6, {
   hueOffset: 30,
 });
 
+// Categorical palette starting with a given color
+const brand = categorical(6, { baseColor: "#e63946" });
+
 // Categorical patterns for motif.js
 const patterns = categoricalPatterns(6);
 
@@ -242,6 +245,7 @@ Generates a categorical color palette.
 | `chromaRange`    | `[number, number]` | `[0.15, 0.25]` | Oklch chroma range                 |
 | `lightnessRange` | `[number, number]` | `[0.5, 0.75]`  | Oklch lightness range, values 0–1  |
 | `gamut`          | [`Gamut`](#gamut) | `"srgb"` | Target gamut: chroma cap (see [Gamut](#gamut)) |
+| `baseColor`      | `string`           | —              | First color of the palette (any CSS color); the style of the next colors is derived from it (see [Starting from a color](#starting-from-a-color)) |
 
 **Returns** `string[]` — CSS colors `oklch(…)`, all inside the target gamut.
 
@@ -262,6 +266,23 @@ temperature.froide; // Greens, cyans, blues, violets (140° → 300°)
 ```
 
 Combining: `categorical(8, { ...presets.vif, ...temperature.chaude })`
+
+#### Starting from a color
+
+`baseColor` makes a given color (a brand color, the color of a main category…) the first color of the palette, and derives a style of comparable visual weight for the next ones:
+
+```ts
+categorical(6, { baseColor: "#e63946" });
+categorical(6, { baseColor: "oklch(62% 0.2 25)", gamut: "p3" });
+```
+
+- **First color** — the color itself (a hex color round-trips exactly). Only its chroma is capped to the target `gamut`; with a CMYK gamut, its lightness is also brought inside the printable range.
+- **Hue** — the hue range starts at the color's hue, which replaces `hueOffset` (ignored). On the full circle, the next hues are the usual Van der Corput steps from there (+180°, +90°, +270°…). An arc (≤ 270°, e.g. a temperature filter) keeps its span but is rotated to start at the color's hue: `{ ...temperature.chaude, baseColor }` gives hues spread over 120° from the color, not warm hues.
+- **Lightness and chroma** — `lightnessRange` and `chromaRange` are recentred on the color, so that it falls exactly on the level the first color takes (80 % of the lightness range, 20 % of the chroma range): `lightnessRange = [L − 0.8·wL, L + 0.2·wL]` and `chromaRange = [C − 0.2·wC, C + 0.8·wC]`. A range that would leave [0, 1] (lightness) or go below 0 (chroma) is shifted back inside, keeping its width.
+- **Widths** — `wL = 0.2` (the width of `presets.vif`) and `wC = 0.45 × C` (at least 0.02, so greys get some room). If `lightnessRange` or `chromaRange` are given, only their width is used: `{ ...presets.pastel, baseColor }` keeps the narrow chroma range of `pastel` around the color.
+- **Stability** — unchanged: adding a class never changes the colors already generated.
+
+A color that cannot be read (unknown syntax outside a browser) is ignored.
 
 #### How it works
 
@@ -370,6 +391,9 @@ pnpm dev
 
 # Build the library
 pnpm build
+
+# Run the tests (Node ≥ 22.18, node:test)
+pnpm test
 
 # Measure palettes (gamut, minimal ΔE OK)
 pnpm diagnose:categorical

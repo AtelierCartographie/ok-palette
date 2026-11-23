@@ -20,6 +20,7 @@
     "dev": "vite serve demo",
     "build": "tsc --noEmit && vite build && tsc --declaration --emitDeclarationOnly",
     "preview": "vite preview",
+    "test": "node --import ./scripts/register-ts.ts --test test/*.test.ts",
     "diagnose": "node scripts/diagnose-categorical.ts && node scripts/diagnose-ramps.ts",
     "diagnose:categorical": "node scripts/diagnose-categorical.ts",
     "diagnose:ramps": "node scripts/diagnose-ramps.ts",

@@ -1,6 +1,7 @@
-import type { CategoricalColorOptions, CSSColor } from "./types";
+import type { CategoricalColorOptions, CSSColor, Range } from "./types";
 import { clampLightnessRange, gamutMaxChroma } from "./gamut";
-import { deltaEOK, oklchToOklab, type Oklab } from "./oklab";
+import { deltaEOK, oklabToOklch, oklchToOklab, type Oklab, type Oklch } from "./oklab";
+import { readColor } from "./parse";
 import { lerp, vanDerCorput } from "./utils";
 
 /**
@@ -60,8 +61,49 @@ function lightnessCandidates(i: number): number[] {
   );
 }
 
+/**
+ * `baseColor`: default width of the lightness range (that of `presets.vif`,
+ * rounded) and of the chroma range, relative to the chroma of the color
+ * (at least `BASE_MIN_C_WIDTH`, so greys still get some room).
+ */
+const BASE_L_WIDTH = 0.2;
+const BASE_C_RATIO = 0.45;
+const BASE_MIN_C_WIDTH = 0.02;
+
+/**
+ * Lightness level of the first color within `lightnessRange` (its chroma
+ * level being `1 − BASE_LEVEL` within `chromaRange`): `baseColor` sets the
+ * ranges so that this level falls on the color.
+ */
+const BASE_LEVEL = L_PREFERENCE[0];
+
+/**
+ * Ranges recentred on `baseColor`, keeping their width: the color sits at
+ * level `BASE_LEVEL` of the lightness range and `1 − BASE_LEVEL` of the
+ * chroma range. A range that would leave [0, 1] (lightness) or go below 0
+ * (chroma) is shifted back inside, keeping its width.
+ */
+function rangesAroundColor(
+  [l, c]: Oklch,
+  lWidth: number,
+  cWidth: number
+): { lightnessRange: Range; chromaRange: Range } {
+  const lw = Math.min(1, Math.max(0, lWidth));
+  const cw = Math.max(0, cWidth);
+  const lLow = Math.min(1 - lw, Math.max(0, l - BASE_LEVEL * lw));
+  const cLow = Math.max(0, c - (1 - BASE_LEVEL) * cw);
+  return { lightnessRange: [lLow, lLow + lw], chromaRange: [cLow, cLow + cw] };
+}
+
 const round = (x: number, digits: number) => Math.round(x * 10 ** digits) / 10 ** digits;
 const floor = (x: number, digits: number) => Math.floor(x * 10 ** digits) / 10 ** digits;
+
+/**
+ * `oklch(L% C H)`. L has 2 decimals in percent at most (`63%`, `62.84%`);
+ * C has 3 decimals, 4 for `baseColor` (so that a hex color round-trips).
+ */
+const formatColor = (l: number, c: number, h: number, cDigits = 3): CSSColor =>
+  `oklch(${round(l * 100, 2)}% ${c.toFixed(cDigits)} ${h.toFixed(2)})`;
 
 /**
  * Generates a categorical color palette.
@@ -79,6 +121,15 @@ const floor = (x: number, digits: number) => Math.floor(x * 10 ** digits) / 10 *
  *   (`"cmyk-coated"`, `"cmyk-uncoated"`), to what is both displayable in sRGB and printable, and
  *   `lightnessRange` is kept above the deepest printable black.
  *   `gamut: "none"` disables the cap.
+ *
+ * With `baseColor`, the first color is that color (its chroma capped to the
+ * gamut, its lightness kept inside a CMYK gamut's printable range), and the
+ * next ones keep a comparable visual weight: the hue range starts at its hue
+ * (`hueOffset` is ignored; an arc keeps its span but is rotated to start
+ * there), and `lightnessRange` / `chromaRange` are recentred around it. Their
+ * width comes from the options when given, otherwise 0.2 in lightness and
+ * 45 % of the color's chroma (at least 0.02) in chroma. A color that cannot be
+ * read (unknown syntax outside a browser) is ignored.
  *
  * Each color only depends on the previous ones: adding a class never changes
  * the colors already generated.
@@ -99,20 +150,34 @@ const floor = (x: number, digits: number) => Math.floor(x * 10 ** digits) / 10 *
  *
  * // 4 colors with a starting hue offset of 45°
  * categorical(4, { hueOffset: 45 });
+ *
+ * // 6 colors, the first one being the brand color
+ * categorical(6, { baseColor: "#e63946" });
  * ```
  */
-export function categorical(
-  count: number,
-  {
+export function categorical(count: number, options: CategoricalColorOptions = {}): CSSColor[] {
+  let {
     hueRange = [0, 360],
     hueOffset = 0,
     chromaRange = [0.15, 0.25],
     lightnessRange = [0.5, 0.75],
-    gamut = "srgb",
-  }: CategoricalColorOptions = {}
-): CSSColor[] {
+  } = options;
+  const { gamut = "srgb", baseColor } = options;
   const colors: CSSColor[] = [];
   const placed: Oklab[] = [];
+
+  const lab = baseColor === undefined ? null : readColor(baseColor);
+  const base = lab && oklabToOklch(lab);
+  if (base) {
+    const width = (r: Range | undefined, fallback: number) =>
+      r ? Math.abs(r[1] - r[0]) : fallback;
+    ({ lightnessRange, chromaRange } = rangesAroundColor(
+      base,
+      width(options.lightnessRange, BASE_L_WIDTH),
+      width(options.chromaRange, Math.max(BASE_MIN_C_WIDTH, base[1] * BASE_C_RATIO))
+    ));
+    hueOffset = base[2] - hueRange[0];
+  }
   const isArc = Math.abs(hueRange[1] - hueRange[0]) <= MAX_ARC_SPAN;
   // On paper, colors darker than the printable black all print as that black
   const lRange = clampLightnessRange(lightnessRange, gamut);
@@ -121,6 +186,17 @@ export function categorical(
     // Hue: Van der Corput for optimal distribution
     const rawHue = lerp(hueRange, hueFraction(i, isArc)) + hueOffset;
     const hue = round(((rawHue % 360) + 360) % 360, 2);
+
+    // baseColor: the first color is the color itself (rounded finer than the
+    // other levels), only capped to the gamut
+    if (i === 0 && base) {
+      const l = round(Math.min(lRange[1], Math.max(lRange[0], base[0])), 4);
+      const cap = gamut === "none" ? Infinity : floor(gamutMaxChroma(l, hue, gamut), 4);
+      const c = Math.max(0, Math.min(round(base[1], 4), cap));
+      placed.push(oklchToOklab(l, c, hue));
+      colors.push(formatColor(l, c, hue, 4));
+      continue;
+    }
 
     // Lightness / chroma: the level farthest from the colors already placed,
     // weighted by the chroma it keeps inside the target gamut
@@ -141,7 +217,7 @@ export function categorical(
     }
 
     placed.push(best!.lab);
-    colors.push(`oklch(${Math.round(best!.l * 100)}% ${best!.c.toFixed(3)} ${hue.toFixed(2)})`);
+    colors.push(formatColor(best!.l, best!.c, hue));
   }
 
   return colors;

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`baseColor`** — option de `categorical()` (et, via `colorize`, de `categoricalPatterns()`) : la palette commence par cette couleur CSS (hex, `oklch()`…, chroma bornée au `gamut`, luminosité ramenée dans la plage imprimable en CMJN) et les couleurs suivantes gardent un poids visuel comparable. La plage de teintes commence à sa teinte (`hueOffset` est ignoré ; un arc garde son amplitude et pivote pour commencer à cette teinte) ; `lightnessRange` et `chromaRange` sont recentrées pour que la couleur tombe sur le niveau de la première couleur (80 % de la luminosité, 20 % de la chroma), avec des largeurs de 0,2 en luminosité et 45 % de la chroma de la couleur (au moins 0,02), ou celles des plages passées en option. Ajouter une classe ne modifie toujours pas les couleurs précédentes.
+- Tests (`pnpm test`, `node:test`, sans dépendance) : `categorical()` et `baseColor`.
+
+### Changed
+
+- `categorical()` : quand elle vient de `baseColor`, la première couleur est écrite plus finement (luminosité à deux décimales en pourcentage, chroma à quatre : `oklch(61.22% 0.2082 22.24)`), pour qu’une couleur hex se retrouve à l’identique. Sans `baseColor`, la sortie est identique à la 0.3.0 (160 configurations comparées).
+
 ## [0.3.0] - 2026-11-20
 
 ### Added
